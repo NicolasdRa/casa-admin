@@ -61,8 +61,11 @@ export default function Dashboard() {
         <span>{t("nav.dashboard")}</span>
         <A href="/bookings">{t("nav.bookings")}</A>
         <A href="/expenses">{t("nav.expenses")}</A>
-        <span>{t("nav.tasks")}</span>
+        <A href="/maintenance">{t("nav.tasks")}</A>
         <span>{t("nav.reports")}</span>
+        <Show when={user() && can(user()!.role, "managePartnersCash")}>
+          <A href="/caja">{t("caja.manage")}</A>
+        </Show>
         <Show when={user() && can(user()!.role, "manageUsers")}>
           <A href="/users">{t("users.manage")}</A>
         </Show>

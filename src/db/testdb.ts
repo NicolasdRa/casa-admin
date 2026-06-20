@@ -86,6 +86,20 @@ CREATE TABLE cash_entries (
   amount_eur integer NOT NULL,
   type text NOT NULL
 );
+CREATE TABLE maintenance_tasks (
+  id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+  date text NOT NULL,
+  description text NOT NULL,
+  status text DEFAULT 'pending' NOT NULL,
+  season text NOT NULL,
+  expense_id integer
+);
+CREATE TABLE commission_settlements (
+  id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+  date text NOT NULL,
+  amount_eur integer NOT NULL,
+  note text
+);
 `;
 
 export function makeTestDb() {

@@ -79,6 +79,16 @@ export function occupancyByMonth(
     }));
 }
 
+/** Rental income (EUR cents): gross of actual bookings, excluding cancellations/reimbursements. */
+export function rentalIncomeEur(db: Db) {
+  return db
+    .select()
+    .from(schema.bookings)
+    .all()
+    .filter((b) => b.type === "booking")
+    .reduce((s, b) => s + b.amountEur, 0);
+}
+
 /** BK-3: total commission accrued to the co-host across all bookings (EUR cents). */
 export function accruedCommissionEur(db: Db) {
   // ponytail: JS sum over the bookings table (small); move to SUM() in SQL if it grows large.
