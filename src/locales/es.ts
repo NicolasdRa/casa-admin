@@ -7,6 +7,7 @@ export const es = {
     expenses: "Gastos",
     tasks: "Mantenimiento",
     reports: "Informes",
+    more: "Más",
   },
   common: {
     amount: "Importe",

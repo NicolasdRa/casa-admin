@@ -7,6 +7,7 @@ export const en = {
     expenses: "Expenses",
     tasks: "Maintenance",
     reports: "Reports",
+    more: "More",
   },
   common: {
     amount: "Amount",

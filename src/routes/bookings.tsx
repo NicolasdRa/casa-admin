@@ -146,7 +146,7 @@ export default function Bookings() {
       </form>
 
       <div class="panel table-scroll">
-        <table>
+        <table class="cards">
           <thead>
             <tr>
               <th>{t("common.date")}</th>
@@ -163,12 +163,20 @@ export default function Bookings() {
               {(b) => (
                 <tr>
                   <td>{b.date}</td>
-                  <td>{b.guest}</td>
-                  <td class="num">{money(b.amountEur)}</td>
-                  <td class="num">{money(b.amountArs)}</td>
-                  <td class="num">{b.fxRate}</td>
-                  <td>{b.fxRateDate}</td>
-                  <td class="num">{money(b.commissionEur)}</td>
+                  <td data-label={t("bookings.guest")}>{b.guest}</td>
+                  <td class="num" data-label="EUR">
+                    {money(b.amountEur)}
+                  </td>
+                  <td class="num" data-label="ARS">
+                    {money(b.amountArs)}
+                  </td>
+                  <td class="num" data-label={t("common.rate")}>
+                    {b.fxRate}
+                  </td>
+                  <td data-label={t("common.rateDate")}>{b.fxRateDate}</td>
+                  <td class="num" data-label={t("bookings.commission")}>
+                    {money(b.commissionEur)}
+                  </td>
                 </tr>
               )}
             </For>

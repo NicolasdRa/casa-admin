@@ -147,7 +147,7 @@ export default function Reports() {
                   <h2>{t("reports.balance")}</h2>
                 </div>
                 <div class="table-scroll">
-                  <table>
+                  <table class="cards">
                     <thead>
                       <tr>
                         <th>{t("bookings.year")}</th>
@@ -163,11 +163,25 @@ export default function Reports() {
                         {(b) => (
                           <tr>
                             <td>{b.year}</td>
-                            <td class="num">{money(b.income)}</td>
-                            <td class="num">{money(b.expenses)}</td>
-                            <td class="num">{money(b.commission)}</td>
-                            <td class={b.net < 0 ? "num neg" : "num pos"}>{money(b.net)}</td>
-                            <td class={b.cumulative < 0 ? "num neg" : "num"}>
+                            <td class="num" data-label={t("reports.income")}>
+                              {money(b.income)}
+                            </td>
+                            <td class="num" data-label={t("reports.expenses")}>
+                              {money(b.expenses)}
+                            </td>
+                            <td class="num" data-label={t("reports.commission")}>
+                              {money(b.commission)}
+                            </td>
+                            <td
+                              class={b.net < 0 ? "num neg" : "num pos"}
+                              data-label={t("reports.net")}
+                            >
+                              {money(b.net)}
+                            </td>
+                            <td
+                              class={b.cumulative < 0 ? "num neg" : "num"}
+                              data-label={t("reports.cumulative")}
+                            >
                               {money(b.cumulative)}
                             </td>
                           </tr>
@@ -227,7 +241,7 @@ export default function Reports() {
                 <h2>{t("reports.entries")}</h2>
               </div>
               <div class="table-scroll">
-                <table>
+                <table class="cards">
                   <thead>
                     <tr>
                       <th>{t("common.date")}</th>
@@ -243,7 +257,7 @@ export default function Reports() {
                       {(e) => (
                         <tr>
                           <td>{e.date}</td>
-                          <td>
+                          <td data-label={t("expenses.detail")}>
                             <span
                               class={e.kind === "booking" ? "chip chip-pos" : "chip chip-pending"}
                             >
@@ -251,10 +265,16 @@ export default function Reports() {
                             </span>{" "}
                             {e.detail}
                           </td>
-                          <td class="num">{money(e.ars)}</td>
-                          <td class="num">{money(e.eur)}</td>
-                          <td class="num">{e.fxRate}</td>
-                          <td>{e.fxRateDate}</td>
+                          <td class="num" data-label="ARS">
+                            {money(e.ars)}
+                          </td>
+                          <td class="num" data-label="EUR">
+                            {money(e.eur)}
+                          </td>
+                          <td class="num" data-label={t("common.rate")}>
+                            {e.fxRate}
+                          </td>
+                          <td data-label={t("common.rateDate")}>{e.fxRateDate}</td>
                         </tr>
                       )}
                     </For>

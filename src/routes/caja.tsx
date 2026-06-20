@@ -106,7 +106,7 @@ export default function Caja() {
           <h2>{t("caja.ledger")}</h2>
         </div>
         <div class="table-scroll">
-          <table>
+          <table class="cards">
             <thead>
               <tr>
                 <th>{t("common.date")}</th>
@@ -130,10 +130,16 @@ export default function Caja() {
                 {(e) => (
                   <tr>
                     <td>{e.date}</td>
-                    <td>{partnerName().get(e.partnerId) ?? e.partnerId}</td>
-                    <td>{e.concept}</td>
-                    <td class={sign(e.amountEur)}>{money(e.amountEur)}</td>
-                    <td class={sign(e.runningBalance)}>{money(e.runningBalance)}</td>
+                    <td data-label={t("caja.partner")}>
+                      {partnerName().get(e.partnerId) ?? e.partnerId}
+                    </td>
+                    <td data-label={t("caja.concept")}>{e.concept}</td>
+                    <td class={sign(e.amountEur)} data-label="EUR">
+                      {money(e.amountEur)}
+                    </td>
+                    <td class={sign(e.runningBalance)} data-label={t("caja.balance")}>
+                      {money(e.runningBalance)}
+                    </td>
                   </tr>
                 )}
               </For>
@@ -147,7 +153,7 @@ export default function Caja() {
           <h2>{t("caja.statements")}</h2>
         </div>
         <div class="table-scroll">
-          <table>
+          <table class="cards">
             <thead>
               <tr>
                 <th>{t("caja.partner")}</th>
@@ -164,12 +170,24 @@ export default function Caja() {
                 {(s) => (
                   <tr>
                     <td>{s.name}</td>
-                    <td class="num">{money(s.incomeShare)}</td>
-                    <td class="num">{money(s.commissionShare)}</td>
-                    <td class="num">{money(s.expenseShare)}</td>
-                    <td class={sign(s.result)}>{money(s.result)}</td>
-                    <td class="num">{money(s.expenseNet)}</td>
-                    <td class={sign(s.cashAccount)}>{money(s.cashAccount)}</td>
+                    <td class="num" data-label={t("caja.income")}>
+                      {money(s.incomeShare)}
+                    </td>
+                    <td class="num" data-label={t("caja.commission")}>
+                      {money(s.commissionShare)}
+                    </td>
+                    <td class="num" data-label={t("caja.expenseShare")}>
+                      {money(s.expenseShare)}
+                    </td>
+                    <td class={sign(s.result)} data-label={t("caja.result")}>
+                      {money(s.result)}
+                    </td>
+                    <td class="num" data-label={t("caja.expenseNet")}>
+                      {money(s.expenseNet)}
+                    </td>
+                    <td class={sign(s.cashAccount)} data-label={t("caja.cashAccount")}>
+                      {money(s.cashAccount)}
+                    </td>
                   </tr>
                 )}
               </For>

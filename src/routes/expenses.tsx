@@ -259,7 +259,7 @@ export default function Expenses() {
       </div>
 
       <div class="panel table-scroll">
-        <table>
+        <table class="cards">
           <thead>
             <tr>
               <th>{t("common.date")}</th>
@@ -286,12 +286,20 @@ export default function Expenses() {
               {(e) => (
                 <tr>
                   <td>{e.date}</td>
-                  <td>{e.detail}</td>
-                  <td>{e.payerName ?? t("expenses.unassigned")}</td>
-                  <td class="num">{money(e.amountEur)}</td>
-                  <td class="num">{money(e.amountArs)}</td>
-                  <td class="num">{e.fxRate}</td>
-                  <td>
+                  <td data-label={t("expenses.detail")}>{e.detail}</td>
+                  <td data-label={t("expenses.payer")}>
+                    {e.payerName ?? t("expenses.unassigned")}
+                  </td>
+                  <td class="num" data-label="EUR">
+                    {money(e.amountEur)}
+                  </td>
+                  <td class="num" data-label="ARS">
+                    {money(e.amountArs)}
+                  </td>
+                  <td class="num" data-label={t("common.rate")}>
+                    {e.fxRate}
+                  </td>
+                  <td data-label={t("expenses.reimbursement")}>
                     <Show when={e.reimbursement === "reimbursed"}>
                       <span class="chip chip-pos">{t("expenses.status_reimbursed")}</span>
                     </Show>
@@ -311,8 +319,8 @@ export default function Expenses() {
                       </span>
                     </Show>
                   </td>
-                  <td>
-                    <Show when={e.receiptUrl}>
+                  <td data-label={t("expenses.receipt")}>
+                    <Show when={e.receiptUrl} fallback={<span class="note-faint">—</span>}>
                       <a href={`/api/receipt?id=${e.id}`} target="_blank" rel="noopener">
                         {t("expenses.receipt")}
                       </a>
