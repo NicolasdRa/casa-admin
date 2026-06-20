@@ -6,6 +6,7 @@
     "build": "vinxi build",
     "start": "vinxi start",
     "db:push": "drizzle-kit push",
+    "db:seed": "node src/db/seed.ts",
     "db:studio": "drizzle-kit studio",
     "test": "node --test",
     "lint": "biome check .",
