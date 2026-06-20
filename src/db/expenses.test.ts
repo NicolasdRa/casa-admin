@@ -5,6 +5,7 @@ import {
   expenseTotalsByPartner,
   getExpenseById,
   listExpenses,
+  receiptPlan,
   safeExt,
   setExpenseReceipt,
 } from "./expenses.ts";
@@ -32,6 +33,15 @@ test("createExpense snapshots FX and stores both currencies", () => {
   assert.equal(e.fxRateDate, "2026-06-18");
   assert.equal(e.detail, "Gas");
   assert.ok(e.id > 0);
+});
+
+test("receiptPlan normalises images to webp, passes through the rest (EX-6)", () => {
+  assert.equal(receiptPlan("image/jpeg"), "webp");
+  assert.equal(receiptPlan("image/png"), "webp");
+  assert.equal(receiptPlan("image/heic"), "webp");
+  assert.equal(receiptPlan("image/svg+xml"), "passthrough"); // vector, not raster
+  assert.equal(receiptPlan("application/pdf"), "passthrough");
+  assert.equal(receiptPlan(""), "passthrough");
 });
 
 test("safeExt extracts a lowercase extension or empty (EX-6)", () => {

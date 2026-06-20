@@ -26,8 +26,15 @@ export async function GET(event: APIEvent) {
   try {
     const data = await readFile(`${dir}/${name}`);
     const ext = name.split(".").pop() ?? "";
+    // Harden against stored-XSS via served files: no MIME sniffing, sandboxed (scripts inert,
+    // opaque origin so it can't reach the session), and a fixed filename for download.
     return new Response(data, {
-      headers: { "content-type": TYPES[ext] ?? "application/octet-stream" },
+      headers: {
+        "content-type": TYPES[ext] ?? "application/octet-stream",
+        "content-disposition": `inline; filename="${name}"`,
+        "x-content-type-options": "nosniff",
+        "content-security-policy": "sandbox; default-src 'none'",
+      },
     });
   } catch {
     return new Response("Not found", { status: 404 });

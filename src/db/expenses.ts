@@ -23,6 +23,11 @@ export function safeExt(filename: string): string {
   return m ? m[1].toLowerCase() : "";
 }
 
+/** EX-6: raster images are normalised to webp (downscaled); everything else (PDFs, etc.) stored as-is. */
+export function receiptPlan(mimeType: string): "webp" | "passthrough" {
+  return mimeType.startsWith("image/") && mimeType !== "image/svg+xml" ? "webp" : "passthrough";
+}
+
 /** Record an expense, snapshotting the FX rate + both currencies immutably onto the row. */
 export function createExpense(db: Db, input: NewExpense) {
   const fx = snapshotForDate(db, input.date, input.currency, input.amount);

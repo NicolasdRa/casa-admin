@@ -6,6 +6,7 @@ import {
   expenseTotalsByPartner,
   listCategories,
   listExpenses,
+  receiptPlan,
   safeExt,
   setExpenseReceipt,
 } from "~/db/expenses";
@@ -61,9 +62,25 @@ const addExpense = action(async (form: FormData) => {
       const { mkdir, writeFile } = await import("node:fs/promises");
       const dir = process.env.UPLOAD_DIR ?? "uploads";
       await mkdir(dir, { recursive: true });
-      const ext = safeExt(receipt.name);
-      const fname = `receipt-${row.id}${ext ? `.${ext}` : ""}`;
-      await writeFile(`${dir}/${fname}`, Buffer.from(await receipt.arrayBuffer()));
+      let data = Buffer.from(await receipt.arrayBuffer());
+      let ext = safeExt(receipt.name) || "bin";
+      if (receiptPlan(receipt.type) === "webp") {
+        // Downscale huge phone photos + normalise to webp; .rotate() honours EXIF orientation.
+        // Optional optimisation: if sharp can't load (native libvips missing), store the original.
+        try {
+          const sharp = (await import("sharp")).default;
+          data = await sharp(data)
+            .rotate()
+            .resize(2000, 2000, { fit: "inside", withoutEnlargement: true })
+            .webp({ quality: 80 })
+            .toBuffer();
+          ext = "webp";
+        } catch (err) {
+          console.error("sharp unavailable; storing original receipt:", (err as Error).message);
+        }
+      }
+      const fname = `receipt-${row.id}.${ext}`;
+      await writeFile(`${dir}/${fname}`, data);
       setExpenseReceipt(db, row.id, fname);
     }
   } catch (e) {
