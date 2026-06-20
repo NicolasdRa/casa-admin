@@ -39,6 +39,8 @@ export const users = sqliteTable("users", {
   // EX-8: links an auth account to the owner it represents. Null = co-host (not an owner) → its
   // expenses are reimbursed (EX-9), never part of the owner split.
   partnerId: integer("partner_id").references(() => partners.id),
+  // CA-23: base32 TOTP secret for optional 2FA. Null = 2FA disabled.
+  totpSecret: text("totp_secret"),
 });
 
 export const partners = sqliteTable("partners", {

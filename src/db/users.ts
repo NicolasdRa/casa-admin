@@ -53,3 +53,14 @@ export function updateUser(db: Db, id: number, patch: UserPatch) {
   const [row] = db.update(schema.users).set(patch).where(eq(schema.users.id, id)).returning().all();
   return row;
 }
+
+/** CA-23: set or clear (null) a user's TOTP secret. */
+export function setTotpSecret(db: Db, id: number, totpSecret: string | null) {
+  const [row] = db
+    .update(schema.users)
+    .set({ totpSecret })
+    .where(eq(schema.users.id, id))
+    .returning()
+    .all();
+  return row;
+}

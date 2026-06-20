@@ -43,7 +43,8 @@ CREATE TABLE users (
   role text NOT NULL,
   locale text DEFAULT 'es' NOT NULL,
   status text DEFAULT 'active' NOT NULL,
-  partner_id integer
+  partner_id integer,
+  totp_secret text
 );
 CREATE TABLE suppliers (
   id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
