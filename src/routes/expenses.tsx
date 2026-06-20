@@ -1,5 +1,6 @@
 import { A, action, createAsync, query, useSubmission } from "@solidjs/router";
 import { createMemo, createSignal, For, Show } from "solid-js";
+import { AppShell } from "~/components/AppShell";
 import { FxPreview } from "~/components/FxPreview";
 import {
   createExpense,
@@ -17,25 +18,29 @@ import { listUsers } from "~/db/users";
 import { useI18n } from "~/lib/i18n";
 import { fromCents, toCents } from "~/lib/money";
 import { can } from "~/lib/permissions";
-import { requireUser } from "~/lib/session";
+import { recordAudit, requireUser } from "~/lib/session";
 
 const listExpensesQuery = query(async () => {
   "use server";
+  await requireUser();
   return listExpensesWithPayer(db);
 }, "expenses");
 
 const listCategoriesQuery = query(async () => {
   "use server";
+  await requireUser();
   return listCategories(db);
 }, "categories");
 
 const listSuppliersQuery = query(async () => {
   "use server";
+  await requireUser();
   return listSuppliers(db);
 }, "suppliers");
 
 const userTotalsQuery = query(async () => {
   "use server";
+  await requireUser();
   return expenseTotalsByUser(db);
 }, "expenseUserTotals");
 
@@ -100,6 +105,7 @@ const addExpense = action(async (form: FormData) => {
       await writeFile(`${dir}/${fname}`, data);
       setExpenseReceipt(db, row.id, fname);
     }
+    await recordAudit("create", "expense");
   } catch (e) {
     return { error: (e as Error).message };
   }
@@ -115,6 +121,7 @@ const reimburseExpense = action(async (form: FormData) => {
   const today = new Date().toISOString().slice(0, 10);
   try {
     markExpenseReimbursed(db, id, me.id, today);
+    await recordAudit("update", `expense:${id}`);
   } catch (e) {
     return { error: (e as Error).message };
   }
@@ -147,7 +154,6 @@ export default function Expenses() {
   const [payerFilter, setPayerFilter] = createSignal<string>("all");
   const submission = useSubmission(addExpense);
   const money = (cents: number) => fromCents(cents).toFixed(2);
-  const cell = { padding: "0.4rem 0.6rem", "border-bottom": "1px solid #eee" } as const;
 
   const visible = createMemo(() => {
     const f = payerFilter();
@@ -162,22 +168,18 @@ export default function Expenses() {
   });
 
   return (
-    <main
-      style={{
-        "font-family": "system-ui, sans-serif",
-        "max-width": "60rem",
-        margin: "2rem auto",
-        padding: "0 1rem",
-      }}
-    >
-      <h1>{t("nav.expenses")}</h1>
+    <AppShell>
+      <header class="page-head">
+        <div>
+          <h1>{t("nav.expenses")}</h1>
+        </div>
+        <div class="page-head-actions">
+          <A href="/suppliers">{t("suppliers.manage")}</A>
+          <A href="/categories">{t("categories.manage")}</A>
+        </div>
+      </header>
 
-      <form
-        action={addExpense}
-        method="post"
-        enctype="multipart/form-data"
-        style={{ display: "flex", gap: "0.5rem", "flex-wrap": "wrap", margin: "1rem 0" }}
-      >
+      <form action={addExpense} method="post" enctype="multipart/form-data" class="toolbar">
         <input
           type="date"
           name="date"
@@ -233,17 +235,12 @@ export default function Expenses() {
 
       <FxPreview date={date()} amount={amount()} currency={currency()} />
 
-      <p style={{ display: "flex", gap: "1rem" }}>
-        <A href="/suppliers">{t("suppliers.manage")}</A>
-        <A href="/categories">{t("categories.manage")}</A>
-      </p>
-
       <Show when={submission.result?.error}>
-        {(err) => <p style={{ color: "crimson" }}>{err()}</p>}
+        {(err) => <p class="alert alert-error">{err()}</p>}
       </Show>
 
       <Show when={unattributed().count > 0}>
-        <p style={{ background: "#fff6e0", padding: "0.5rem 0.75rem", "border-radius": "4px" }}>
+        <p class="alert alert-warn">
           {t("expenses.unattributed", {
             count: String(unattributed().count),
             total: money(unattributed().total),
@@ -252,91 +249,101 @@ export default function Expenses() {
       </Show>
 
       {/* EX-10: discriminate the ledger by payer. */}
-      <label style={{ display: "inline-flex", gap: "0.4rem", margin: "0.5rem 0" }}>
-        {t("expenses.byUser")}
+      <div class="toolbar filter">
+        <span class="toolbar-label">{t("expenses.byUser")}</span>
         <select value={payerFilter()} onChange={(e) => setPayerFilter(e.currentTarget.value)}>
           <option value="all">{t("expenses.allUsers")}</option>
           <For each={me().users}>{(u) => <option value={u.id}>{u.name}</option>}</For>
           <option value="none">{t("expenses.unassigned")}</option>
         </select>
-      </label>
+      </div>
 
-      <table style={{ "border-collapse": "collapse", width: "100%" }}>
-        <thead>
-          <tr>
-            <th style={cell}>{t("common.date")}</th>
-            <th style={cell}>{t("expenses.detail")}</th>
-            <th style={cell}>{t("expenses.payer")}</th>
-            <th style={cell}>EUR</th>
-            <th style={cell}>ARS</th>
-            <th style={cell}>{t("common.rate")}</th>
-            <th style={cell}>{t("expenses.reimbursement")}</th>
-            <th style={cell}>{t("expenses.receipt")}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <For
-            each={visible()}
-            fallback={
-              <tr>
-                <td colspan="8" style={cell}>
-                  {t("expenses.empty")}
-                </td>
-              </tr>
-            }
-          >
-            {(e) => (
-              <tr>
-                <td style={cell}>{e.date}</td>
-                <td style={cell}>{e.detail}</td>
-                <td style={cell}>{e.payerName ?? t("expenses.unassigned")}</td>
-                <td style={cell}>{money(e.amountEur)}</td>
-                <td style={cell}>{money(e.amountArs)}</td>
-                <td style={cell}>{e.fxRate}</td>
-                <td style={cell}>
-                  <Show when={e.reimbursement === "reimbursed"}>
-                    ✅ {t("expenses.status_reimbursed")}
-                  </Show>
-                  <Show when={e.reimbursement === "pending"}>
-                    <span style={{ "margin-right": "0.4rem" }}>
-                      ⏳ {t("expenses.status_pending")}
-                    </span>
-                    <Show when={me().canReimburse}>
-                      <form action={reimburseExpense} method="post" style={{ display: "inline" }}>
-                        <input type="hidden" name="id" value={e.id} />
-                        <button type="submit">{t("expenses.reimburse")}</button>
-                      </form>
-                    </Show>
-                  </Show>
-                </td>
-                <td style={cell}>
-                  <Show when={e.receiptUrl}>
-                    <a href={`/api/receipt?id=${e.id}`} target="_blank" rel="noopener">
-                      📎
-                    </a>
-                  </Show>
-                </td>
-              </tr>
-            )}
-          </For>
-        </tbody>
-      </table>
-
-      <Show when={userTotals().length > 0}>
-        <h2 style={{ "margin-top": "2rem", "font-size": "1.1rem" }}>{t("expenses.byUser")}</h2>
-        <table style={{ "border-collapse": "collapse", width: "100%" }}>
+      <div class="panel table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>{t("common.date")}</th>
+              <th>{t("expenses.detail")}</th>
+              <th>{t("expenses.payer")}</th>
+              <th class="num">EUR</th>
+              <th class="num">ARS</th>
+              <th class="num">{t("common.rate")}</th>
+              <th>{t("expenses.reimbursement")}</th>
+              <th>{t("expenses.receipt")}</th>
+            </tr>
+          </thead>
           <tbody>
-            <For each={userTotals()}>
-              {(u) => (
+            <For
+              each={visible()}
+              fallback={
                 <tr>
-                  <td style={cell}>{u.name ?? t("expenses.unassigned")}</td>
-                  <td style={cell}>{money(u.totalEur)} EUR</td>
+                  <td colspan="8" class="note">
+                    {t("expenses.empty")}
+                  </td>
+                </tr>
+              }
+            >
+              {(e) => (
+                <tr>
+                  <td>{e.date}</td>
+                  <td>{e.detail}</td>
+                  <td>{e.payerName ?? t("expenses.unassigned")}</td>
+                  <td class="num">{money(e.amountEur)}</td>
+                  <td class="num">{money(e.amountArs)}</td>
+                  <td class="num">{e.fxRate}</td>
+                  <td>
+                    <Show when={e.reimbursement === "reimbursed"}>
+                      <span class="chip chip-pos">{t("expenses.status_reimbursed")}</span>
+                    </Show>
+                    <Show when={e.reimbursement === "pending"}>
+                      <span style={{ display: "inline-flex", gap: "8px", "align-items": "center" }}>
+                        <span class="chip chip-pending">{t("expenses.status_pending")}</span>
+                        <Show when={me().canReimburse}>
+                          <form
+                            action={reimburseExpense}
+                            method="post"
+                            style={{ display: "inline" }}
+                          >
+                            <input type="hidden" name="id" value={e.id} />
+                            <button type="submit">{t("expenses.reimburse")}</button>
+                          </form>
+                        </Show>
+                      </span>
+                    </Show>
+                  </td>
+                  <td>
+                    <Show when={e.receiptUrl}>
+                      <a href={`/api/receipt?id=${e.id}`} target="_blank" rel="noopener">
+                        {t("expenses.receipt")}
+                      </a>
+                    </Show>
+                  </td>
                 </tr>
               )}
             </For>
           </tbody>
         </table>
+      </div>
+
+      <Show when={userTotals().length > 0}>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>{t("expenses.byUser")}</h2>
+          </div>
+          <table>
+            <tbody>
+              <For each={userTotals()}>
+                {(u) => (
+                  <tr>
+                    <td>{u.name ?? t("expenses.unassigned")}</td>
+                    <td class="num">{money(u.totalEur)} EUR</td>
+                  </tr>
+                )}
+              </For>
+            </tbody>
+          </table>
+        </section>
       </Show>
-    </main>
+    </AppShell>
   );
 }

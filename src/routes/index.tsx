@@ -1,82 +1,35 @@
-import { A, action, createAsync, query, redirect, useSubmission } from "@solidjs/router";
-import { Show } from "solid-js";
+import { A } from "@solidjs/router";
+import { AppShell } from "~/components/AppShell";
 import { FxTrend } from "~/components/FxTrend";
 import { useI18n } from "~/lib/i18n";
-import { can } from "~/lib/permissions";
-import { clearSession, currentUser } from "~/lib/session";
-
-const currentUserQuery = query(async () => {
-  "use server";
-  return currentUser();
-}, "currentUser");
-
-const logoutAction = action(async () => {
-  "use server";
-  await clearSession();
-  throw redirect("/login");
-}, "logout");
 
 export default function Dashboard() {
-  const { t, locale, setLocale } = useI18n();
-  const user = createAsync(() => currentUserQuery());
-  const loggingOut = useSubmission(logoutAction);
+  const { t } = useI18n();
 
   return (
-    <main
-      style={{
-        "font-family": "system-ui, sans-serif",
-        "max-width": "60rem",
-        margin: "2rem auto",
-        padding: "0 1rem",
-      }}
-    >
-      <header
-        style={{ display: "flex", "justify-content": "space-between", "align-items": "baseline" }}
-      >
+    <AppShell>
+      <header class="page-head">
         <div>
-          <h1 style={{ margin: 0 }}>{t("app.title")}</h1>
-          <p style={{ color: "#666", margin: "0.25rem 0" }}>{t("app.subtitle")}</p>
-        </div>
-        <div style={{ display: "flex", gap: "0.75rem", "align-items": "center" }}>
-          <Show when={user()}>
-            {(u) => (
-              <span style={{ color: "#555" }}>
-                {u().name} ({u().role})
-              </span>
-            )}
-          </Show>
-          <button type="button" onClick={() => setLocale(locale() === "es" ? "en" : "es")}>
-            {locale() === "es" ? "EN" : "ES"}
-          </button>
-          <Show when={user()}>
-            <form action={logoutAction} method="post">
-              <button type="submit" disabled={loggingOut.pending}>
-                {t("auth.logout")}
-              </button>
-            </form>
-          </Show>
+          <h1>{t("app.title")}</h1>
+          <p class="sub">{t("app.subtitle")}</p>
         </div>
       </header>
-      <nav style={{ display: "flex", gap: "1rem", "margin-top": "1rem" }}>
-        <span>{t("nav.dashboard")}</span>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>{t("fx.trend")}</h2>
+        </div>
+        <div class="panel-pad">
+          <FxTrend />
+        </div>
+      </section>
+
+      <nav class="dash-links">
         <A href="/bookings">{t("nav.bookings")}</A>
         <A href="/expenses">{t("nav.expenses")}</A>
         <A href="/maintenance">{t("nav.tasks")}</A>
-        <span>{t("nav.reports")}</span>
-        <Show when={user() && can(user()!.role, "managePartnersCash")}>
-          <A href="/caja">{t("caja.manage")}</A>
-        </Show>
-        <Show when={user() && can(user()!.role, "manageUsers")}>
-          <A href="/users">{t("users.manage")}</A>
-        </Show>
-        <Show when={user() && can(user()!.role, "manageSettings")}>
-          <A href="/settings">{t("settings.manage")}</A>
-        </Show>
+        <A href="/occupancy">{t("bookings.occupancy")}</A>
       </nav>
-      <FxTrend />
-      <p style={{ "margin-top": "2rem", color: "#999" }}>
-        Foundation scaffold — schema, FX core and i18n are wired. Modules come next.
-      </p>
-    </main>
+    </AppShell>
   );
 }

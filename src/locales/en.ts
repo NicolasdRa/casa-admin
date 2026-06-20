@@ -62,6 +62,14 @@ export const en = {
   occupancy: {
     title: "Occupancy",
   },
+  audit: {
+    title: "Audit log",
+    when: "When",
+    user: "User",
+    action: "Action",
+    entity: "Entity",
+    empty: "No entries yet.",
+  },
   caja: {
     title: "Cash account",
     manage: "Cash account",

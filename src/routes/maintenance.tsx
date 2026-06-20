@@ -1,9 +1,11 @@
 import { action, createAsync, query, useSearchParams, useSubmission } from "@solidjs/router";
 import { For, Show } from "solid-js";
+import { AppShell } from "~/components/AppShell";
 import { listExpenses } from "~/db/expenses";
 import { db } from "~/db/index";
 import { createTask, listSeasons, listTasks, setTaskStatus } from "~/db/maintenance";
 import { useI18n } from "~/lib/i18n";
+import { recordAudit, requireUser } from "~/lib/session";
 
 interface Filter {
   season?: string;
@@ -12,21 +14,25 @@ interface Filter {
 
 const tasksQuery = query(async (filter: Filter) => {
   "use server";
+  await requireUser();
   return listTasks(db, filter);
 }, "tasks");
 
 const seasonsQuery = query(async () => {
   "use server";
+  await requireUser();
   return listSeasons(db);
 }, "seasons");
 
 const expensesQuery = query(async () => {
   "use server";
+  await requireUser();
   return listExpenses(db).map((e) => ({ id: e.id, date: e.date, detail: e.detail }));
 }, "taskExpenses");
 
 const addTask = action(async (form: FormData) => {
   "use server";
+  await requireUser();
   const date = String(form.get("date") ?? "");
   const description = String(form.get("description") ?? "").trim();
   const season = String(form.get("season") ?? "").trim();
@@ -34,12 +40,15 @@ const addTask = action(async (form: FormData) => {
   const expenseId = expenseRaw ? Number(expenseRaw) : undefined;
   if (!date || !description || !season) return { error: "invalid" };
   createTask(db, { date, description, season, expenseId });
+  await recordAudit("create", "maintenanceTask");
   return { ok: true };
 }, "addTask");
 
 const toggleTask = action(async (form: FormData) => {
   "use server";
+  await requireUser();
   setTaskStatus(db, Number(form.get("id")), form.get("status") === "done" ? "done" : "pending");
+  await recordAudit("update", "maintenanceTask");
   return { ok: true };
 }, "toggleTask");
 
@@ -57,25 +66,17 @@ export default function Maintenance() {
   const seasons = createAsync(() => seasonsQuery(), { initialValue: [] });
   const expenses = createAsync(() => expensesQuery(), { initialValue: [] });
   const adding = useSubmission(addTask);
-  const cell = { padding: "0.4rem 0.6rem", "border-bottom": "1px solid #eee" } as const;
   const thisYear = "2026";
 
   return (
-    <main
-      style={{
-        "font-family": "system-ui, sans-serif",
-        "max-width": "55rem",
-        margin: "2rem auto",
-        padding: "0 1rem",
-      }}
-    >
-      <h1>{t("nav.tasks")}</h1>
+    <AppShell>
+      <header class="page-head">
+        <div>
+          <h1>{t("nav.tasks")}</h1>
+        </div>
+      </header>
 
-      <form
-        action={addTask}
-        method="post"
-        style={{ display: "flex", gap: "0.5rem", "flex-wrap": "wrap", margin: "1rem 0" }}
-      >
+      <form action={addTask} method="post" class="toolbar">
         <input type="date" name="date" required />
         <input name="description" placeholder={t("maintenance.description")} required />
         <input

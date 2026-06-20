@@ -3,7 +3,7 @@ import { For, Show } from "solid-js";
 import { CATEGORY_GROUPS, type CategoryGroup, createCategory, listCategories } from "~/db/expenses";
 import { db } from "~/db/index";
 import { useI18n } from "~/lib/i18n";
-import { currentUser } from "~/lib/session";
+import { currentUser, recordAudit } from "~/lib/session";
 
 async function requireAdmin() {
   const me = await currentUser();
@@ -28,6 +28,7 @@ const addCategory = action(async (form: FormData) => {
   } catch {
     return { error: "invalid" };
   }
+  await recordAudit("create", "category");
   return { ok: true };
 }, "addCategory");
 

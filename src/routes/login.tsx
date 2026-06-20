@@ -23,41 +23,35 @@ export default function Login() {
   const submission = useSubmission(loginAction);
 
   return (
-    <main
-      style={{
-        "font-family": "system-ui, sans-serif",
-        "max-width": "22rem",
-        margin: "5rem auto",
-        padding: "0 1rem",
-      }}
-    >
-      <h1>{t("auth.login")}</h1>
-      <form
-        action={loginAction}
-        method="post"
-        style={{ display: "flex", "flex-direction": "column", gap: "0.6rem" }}
-      >
-        <input
-          type="email"
-          name="email"
-          placeholder={t("auth.email")}
-          required
-          autocomplete="username"
-        />
-        <input
-          type="password"
-          name="password"
-          placeholder={t("auth.password")}
-          required
-          autocomplete="current-password"
-        />
-        <button type="submit" disabled={submission.pending}>
-          {t("auth.login")}
-        </button>
-      </form>
-      <Show when={submission.result?.error}>
-        <p style={{ color: "crimson" }}>{t("auth.invalid")}</p>
-      </Show>
+    <main class="auth">
+      <div class="auth-card">
+        <div class="auth-brand">
+          <h1>{t("app.title")}</h1>
+          <span>{t("app.subtitle")}</span>
+        </div>
+        <form action={loginAction} method="post">
+          <input
+            type="email"
+            name="email"
+            placeholder={t("auth.email")}
+            required
+            autocomplete="username"
+          />
+          <input
+            type="password"
+            name="password"
+            placeholder={t("auth.password")}
+            required
+            autocomplete="current-password"
+          />
+          <button type="submit" disabled={submission.pending}>
+            {t("auth.login")}
+          </button>
+        </form>
+        <Show when={submission.result?.error}>
+          <p class="alert alert-error">{t("auth.invalid")}</p>
+        </Show>
+      </div>
     </main>
   );
 }

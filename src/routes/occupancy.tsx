@@ -3,9 +3,11 @@ import { For } from "solid-js";
 import { listBookings, occupancyByMonth } from "~/db/bookings";
 import { db } from "~/db/index";
 import { useI18n } from "~/lib/i18n";
+import { requireUser } from "~/lib/session";
 
 const occupancyQuery = query(async () => {
   "use server";
+  await requireUser();
   return occupancyByMonth(listBookings(db));
 }, "occupancy");
 

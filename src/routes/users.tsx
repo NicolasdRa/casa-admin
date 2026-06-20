@@ -5,7 +5,7 @@ import { createUser, getUserById, listUsers, updateUser } from "~/db/users";
 import { useI18n } from "~/lib/i18n";
 import { hashPassword } from "~/lib/password";
 import { can, type Role, userEditError } from "~/lib/permissions";
-import { currentUser } from "~/lib/session";
+import { currentUser, recordAudit } from "~/lib/session";
 
 async function requireManageUsers() {
   const me = await currentUser();
@@ -40,6 +40,7 @@ const addUser = action(async (form: FormData) => {
   } catch {
     return { error: "duplicate" };
   }
+  await recordAudit("create", "user");
   return { ok: true };
 }, "addUser");
 
@@ -58,6 +59,7 @@ const editUser = action(async (form: FormData) => {
   const err = userEditError(me, target, next, activeSuperadmins);
   if (err) return { error: err };
   updateUser(db, target.id, next);
+  await recordAudit("update", `user:${target.id}`);
   return { ok: true };
 }, "editUser");
 

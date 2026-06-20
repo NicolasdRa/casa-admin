@@ -100,6 +100,13 @@ CREATE TABLE commission_settlements (
   amount_eur integer NOT NULL,
   note text
 );
+CREATE TABLE audit_log (
+  id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+  user_id integer,
+  action text NOT NULL,
+  entity text NOT NULL,
+  created_at text DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
 `;
 
 export function makeTestDb() {

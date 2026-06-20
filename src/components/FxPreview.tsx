@@ -5,9 +5,11 @@ import { db } from "~/db/index";
 import { snapshot } from "~/lib/fx";
 import { useI18n } from "~/lib/i18n";
 import { fromCents, toCents } from "~/lib/money";
+import { requireUser } from "~/lib/session";
 
 const rateForDate = query(async (date: string) => {
   "use server";
+  await requireUser();
   return getFxRate(db, date);
 }, "rateForDate");
 

@@ -3,20 +3,24 @@ import { For, Show } from "solid-js";
 import { db } from "~/db/index";
 import { createSupplier, listSuppliers } from "~/db/suppliers";
 import { useI18n } from "~/lib/i18n";
+import { recordAudit, requireUser } from "~/lib/session";
 
 const listSuppliersQuery = query(async () => {
   "use server";
+  await requireUser();
   return listSuppliers(db);
 }, "suppliers");
 
 const addSupplier = action(async (form: FormData) => {
   "use server";
+  await requireUser();
   const name = String(form.get("name") ?? "");
   try {
     createSupplier(db, name);
   } catch (e) {
     return { error: (e as Error).message };
   }
+  await recordAudit("create", "supplier");
   return { ok: true };
 }, "addSupplier");
 

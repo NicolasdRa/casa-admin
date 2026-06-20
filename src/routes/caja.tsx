@@ -7,7 +7,7 @@ import { partnerStatements } from "~/db/statements";
 import { useI18n } from "~/lib/i18n";
 import { fromCents, toCents } from "~/lib/money";
 import { can } from "~/lib/permissions";
-import { currentUser } from "~/lib/session";
+import { currentUser, recordAudit } from "~/lib/session";
 
 async function requireCash() {
   const me = await currentUser();
@@ -53,6 +53,7 @@ const addCashEntry = action(async (form: FormData) => {
     type,
     amountEur: type === "withdrawal" ? -cents : cents,
   });
+  await recordAudit("create", "cashEntry");
   return { ok: true };
 }, "addCashEntry");
 

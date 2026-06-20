@@ -1,0 +1,664 @@
+/*
+ * Precision Ledger — design system for Casa Bosque.
+ * Tokens are the committed identity from docs/DESIGN.md (kept as-is, not re-derived).
+ * Strategy: style bare semantic elements so routes stay clean; classes only where
+ * structure (shell, toolbar, chips) needs them.
+ */
+
+:root {
+  /* Surfaces — sterile slate, tonal layering instead of shadow */
+  --bg: #f7f9fb;
+  --surface: #ffffff;
+  --surface-inset: #f2f4f6;
+  --surface-hover: #f7f9fb;
+  --zebra: #f8fafc;
+
+  /* Ink */
+  --ink: #191c1e;
+  --muted: #45474c; /* on-surface-variant — dark enough for ≥4.5:1 body text */
+  --faint: #75777d; /* outline / placeholder — only on white */
+
+  /* Lines */
+  --line: #e2e8f0;
+  --line-strong: #c5c6cd;
+
+  /* Brand — deep navy carries institutional trust */
+  --navy: #1e293b;
+  --navy-hover: #0f172a;
+  --navy-soft: #334155;
+  --on-navy: #ffffff;
+
+  /* Semantic financial signals */
+  --pos: #047857; /* emerald, darkened for text contrast */
+  --pos-bg: #ecfdf5;
+  --neg: #be123c; /* rose */
+  --neg-bg: #fff1f3;
+  --warn: #b45309; /* amber pending */
+  --warn-bg: #fffbeb;
+  --danger: #ba1a1a;
+
+  /* Geometry — sharp, mathematical */
+  --radius: 2px;
+  --u: 4px; /* base spacing unit */
+
+  /* The one allowed shadow: sharp, for transient overlays */
+  --pop-shadow: 0 2px 4px rgb(15 23 42 / 0.1);
+
+  /* Semantic z-scale */
+  --z-sticky: 100;
+  --z-pop: 200;
+  --z-tooltip: 300;
+
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+}
+
+body {
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv05", "ss01";
+}
+
+/* Tabular figures everywhere data lives */
+table,
+.num,
+.mono {
+  font-variant-numeric: tabular-nums;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  color: var(--ink);
+}
+h1 {
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+h2 {
+  font-size: 1.0625rem;
+  letter-spacing: -0.01em;
+}
+h3 {
+  font-size: 0.9375rem;
+}
+
+a {
+  color: var(--navy);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+p {
+  margin: 0;
+}
+
+/* ─── Form controls ─────────────────────────────────────────── */
+
+input,
+select,
+button,
+textarea {
+  font-family: inherit;
+  font-size: 0.875rem;
+  color: var(--ink);
+  border-radius: var(--radius);
+}
+
+input,
+select,
+textarea {
+  padding: 7px 9px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+input::placeholder {
+  color: var(--faint);
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--navy);
+  box-shadow: inset 0 0 0 1px var(--navy);
+}
+select {
+  cursor: pointer;
+}
+input[type="file"] {
+  padding: 5px 8px;
+  font-size: 0.8125rem;
+}
+input[type="date"] {
+  min-height: 33px;
+}
+
+/* Primary action = solid navy. The dominant button in the app. */
+button,
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-weight: 500;
+  color: var(--on-navy);
+  background: var(--navy);
+  border: 1px solid var(--navy);
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    opacity 120ms ease;
+}
+button:hover,
+.btn:hover {
+  background: var(--navy-hover);
+  border-color: var(--navy-hover);
+}
+button:active,
+.btn:active {
+  background: #0a0f1a;
+}
+button:disabled,
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+}
+
+/* Secondary = slate outline, navy text */
+.btn-ghost {
+  color: var(--navy);
+  background: var(--surface);
+  border-color: var(--line-strong);
+}
+.btn-ghost:hover {
+  background: var(--surface-inset);
+  border-color: var(--navy);
+}
+
+/* Compact buttons live inside dense tables/rows */
+table button,
+.btn-sm {
+  padding: 4px 9px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--navy);
+  background: var(--surface);
+  border-color: var(--line-strong);
+}
+table button:hover {
+  background: var(--surface-inset);
+  border-color: var(--navy);
+}
+
+/* ─── Tables — the primary vehicle for information ───────────── */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+thead th {
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--surface-inset);
+  border-bottom: 1px solid var(--line-strong);
+  white-space: nowrap;
+}
+tbody td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+tbody tr:nth-child(even) {
+  background: var(--zebra);
+}
+tbody tr:hover {
+  background: var(--surface-inset);
+}
+tbody tr:last-child td {
+  border-bottom: none;
+}
+.num {
+  text-align: right;
+  white-space: nowrap;
+}
+td.num {
+  color: var(--ink);
+}
+td.neg {
+  color: var(--neg);
+}
+td.pos {
+  color: var(--pos);
+}
+tr.total {
+  font-weight: 600;
+  background: var(--surface-inset) !important;
+}
+tr.total td {
+  border-top: 1px solid var(--line-strong);
+}
+
+/* ─── Panels — outline-defined containers, no shadow ─────────── */
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.panel + .panel,
+.panel + .toolbar,
+* + .panel {
+  margin-top: 20px;
+}
+.panel-head {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.panel-head h2 {
+  font-size: 0.9375rem;
+}
+.panel-pad {
+  padding: 16px;
+}
+
+/* ─── Toolbar — the add / filter form rows ───────────────────── */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.toolbar.filter {
+  padding: 12px 16px;
+  background: var(--surface-inset);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.toolbar-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-right: 2px;
+}
+
+/* ─── Status chips ──────────────────────────────────────────── */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.chip-pos {
+  color: var(--pos);
+  background: var(--pos-bg);
+}
+.chip-neg {
+  color: var(--neg);
+  background: var(--neg-bg);
+}
+.chip-pending {
+  color: var(--warn);
+  background: var(--warn-bg);
+}
+
+/* ─── Messages ──────────────────────────────────────────────── */
+
+.alert {
+  padding: 9px 13px;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+.alert-error {
+  color: var(--danger);
+  background: var(--neg-bg);
+  border-color: #f3c9cf;
+}
+.alert-warn {
+  color: var(--warn);
+  background: var(--warn-bg);
+  border-color: #f5e3b8;
+}
+.note {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+.note-faint {
+  color: var(--faint);
+  font-size: 0.8125rem;
+}
+.saved {
+  color: var(--pos);
+  font-weight: 500;
+}
+
+/* ─── Settings field rows ───────────────────────────────────── */
+
+.field {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin: 0;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+.field:last-of-type {
+  border-bottom: none;
+}
+.field > span {
+  width: 12rem;
+  flex: none;
+  color: var(--muted);
+  font-weight: 500;
+}
+.field input,
+.field select {
+  flex: 1;
+  max-width: 14rem;
+}
+
+/* ─── App shell ─────────────────────────────────────────────── */
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 232px 1fr;
+  min-height: 100vh;
+}
+
+.app-sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--navy);
+  color: var(--on-navy);
+  z-index: var(--z-sticky);
+}
+
+.app-brand {
+  padding: 20px 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+}
+.app-brand strong {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.app-brand span {
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.5);
+}
+
+.app-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px;
+  overflow-y: auto;
+  flex: 1;
+}
+.app-nav a {
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  color: rgb(255 255 255 / 0.72);
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+}
+.app-nav a:hover {
+  background: rgb(255 255 255 / 0.07);
+  color: #fff;
+  text-decoration: none;
+}
+.app-nav a.is-active {
+  background: rgb(255 255 255 / 0.12);
+  color: #fff;
+}
+
+.app-foot {
+  padding: 12px;
+  border-top: 1px solid rgb(255 255 255 / 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.app-foot .who {
+  font-size: 0.8125rem;
+  color: rgb(255 255 255 / 0.6);
+  padding: 0 4px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.app-foot .who b {
+  color: #fff;
+  font-weight: 500;
+}
+.app-foot-actions {
+  display: flex;
+  gap: 8px;
+}
+.app-foot button {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 0.8125rem;
+  color: rgb(255 255 255 / 0.85);
+  background: rgb(255 255 255 / 0.08);
+  border-color: rgb(255 255 255 / 0.12);
+}
+.app-foot button:hover {
+  background: rgb(255 255 255 / 0.16);
+  border-color: rgb(255 255 255 / 0.24);
+}
+
+.app-main {
+  min-width: 0; /* let tables shrink/scroll instead of blowing out the grid */
+}
+.app-content {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 28px 28px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.page-head .sub {
+  color: var(--muted);
+  margin-top: 3px;
+}
+.page-head-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+/* Wide tables scroll within their panel rather than break the layout */
+.table-scroll {
+  overflow-x: auto;
+}
+
+/* Dashboard quick links */
+.dash-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.dash-links a {
+  padding: 9px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-weight: 500;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+}
+.dash-links a:hover {
+  border-color: var(--navy);
+  background: var(--surface-inset);
+  text-decoration: none;
+}
+
+/* ─── Auth (login) — no shell ───────────────────────────────── */
+
+.auth {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.auth-card {
+  width: 100%;
+  max-width: 22rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.auth-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.auth-brand span {
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.auth-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ─── Responsive: sidebar collapses to a top bar ────────────── */
+
+@media (max-width: 880px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+  .app-sidebar {
+    position: sticky;
+    top: 0;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    overflow-x: auto;
+  }
+  .app-brand {
+    border-bottom: none;
+    border-right: 1px solid rgb(255 255 255 / 0.08);
+    padding: 12px 16px;
+    white-space: nowrap;
+  }
+  .app-nav {
+    flex-direction: row;
+    flex: 1;
+    padding: 8px;
+    gap: 4px;
+  }
+  .app-nav a {
+    white-space: nowrap;
+  }
+  .app-foot {
+    flex-direction: row;
+    border-top: none;
+    border-left: 1px solid rgb(255 255 255 / 0.08);
+    align-items: center;
+  }
+  .app-foot .who {
+    display: none;
+  }
+  .app-content {
+    padding: 20px 16px 48px;
+  }
+}
+
+@media (max-width: 520px) {
+  .page-head {
+    align-items: flex-start;
+  }
+  .toolbar input,
+  .toolbar select {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}
+
+/* ─── Motion discipline ─────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

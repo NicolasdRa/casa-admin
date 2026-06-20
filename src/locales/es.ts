@@ -62,6 +62,14 @@ export const es = {
   occupancy: {
     title: "Ocupación",
   },
+  audit: {
+    title: "Auditoría",
+    when: "Fecha",
+    user: "Usuario",
+    action: "Acción",
+    entity: "Entidad",
+    empty: "Sin registros todavía.",
+  },
   caja: {
     title: "Caja",
     manage: "Caja",

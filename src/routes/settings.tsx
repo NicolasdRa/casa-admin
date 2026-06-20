@@ -4,7 +4,7 @@ import { db } from "~/db/index";
 import { getSettings, type SettingsPatch, updateSettings } from "~/db/settings";
 import { useI18n } from "~/lib/i18n";
 import { can } from "~/lib/permissions";
-import { currentUser } from "~/lib/session";
+import { currentUser, recordAudit } from "~/lib/session";
 
 async function requireManageSettings() {
   const me = await currentUser();
@@ -31,6 +31,7 @@ const saveSettings = action(async (form: FormData) => {
   const backup = String(form.get("backupCadence") ?? "").trim();
   if (backup) patch.backupCadence = backup;
   updateSettings(db, patch);
+  await recordAudit("update", "settings");
   return { ok: true };
 }, "saveSettings");
 

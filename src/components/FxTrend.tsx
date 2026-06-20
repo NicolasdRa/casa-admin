@@ -3,10 +3,12 @@ import { Show } from "solid-js";
 import { listRecentFxRates } from "~/db/fx";
 import { db } from "~/db/index";
 import { useI18n } from "~/lib/i18n";
+import { requireUser } from "~/lib/session";
 import { sparkline } from "~/lib/sparkline";
 
 const recentRatesQuery = query(async () => {
   "use server";
+  await requireUser();
   return listRecentFxRates(db, 30).map((r) => r.average);
 }, "recentFxRates");
 
