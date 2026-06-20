@@ -1,6 +1,6 @@
 import { desc, lte } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import { bnaAverage } from "../lib/fx.ts";
+import { bnaAverage, type Currency, snapshot } from "../lib/fx.ts";
 import * as schema from "./schema.ts";
 
 type Db = BetterSQLite3Database<typeof schema>;
@@ -37,4 +37,16 @@ export function getFxRate(db: Db, date: string) {
     .limit(1)
     .all();
   return rows[0] ?? null;
+}
+
+/**
+ * Build the immutable FX snapshot for an amount entered on `date`: resolves the rate (with
+ * weekend fallback) and converts to both currencies. Shared by bookings & expenses so the
+ * "no rate available" contract lives in one place. Throws if no quote exists (→ FX-7 override).
+ */
+export function snapshotForDate(db: Db, date: string, currency: Currency, amountCents: number) {
+  const rate = getFxRate(db, date);
+  if (!rate) throw new Error(`No FX rate available on or before ${date}`);
+  const { amountEur, amountArs } = snapshot(amountCents, currency, rate.average);
+  return { fxRate: rate.average, fxRateDate: rate.date, amountEur, amountArs };
 }
