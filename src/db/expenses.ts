@@ -59,8 +59,25 @@ export function listExpenses(db: Db) {
   return db.select().from(schema.expenses).orderBy(desc(schema.expenses.date)).all();
 }
 
+export const CATEGORY_GROUPS = [
+  "operating",
+  "equipment",
+  "maintenance",
+  "taxes",
+  "services",
+] as const;
+export type CategoryGroup = (typeof CATEGORY_GROUPS)[number];
+
 export function listCategories(db: Db) {
   return db.select().from(schema.categories).orderBy(schema.categories.name).all();
+}
+
+export function createCategory(db: Db, input: { name: string; group: CategoryGroup }) {
+  const name = input.name.trim();
+  if (!name) throw new Error("category name required");
+  if (!CATEGORY_GROUPS.includes(input.group)) throw new Error("invalid category group");
+  const [row] = db.insert(schema.categories).values({ name, group: input.group }).returning().all();
+  return row;
 }
 
 /** Aggregate each partner's total expense share (EUR cents) across all splits. */

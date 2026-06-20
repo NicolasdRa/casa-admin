@@ -124,8 +124,9 @@ export default function Expenses() {
 
       <FxPreview date={date()} amount={amount()} currency={currency()} />
 
-      <p>
+      <p style={{ display: "flex", gap: "1rem" }}>
         <A href="/suppliers">{t("suppliers.manage")}</A>
+        <A href="/categories">{t("categories.manage")}</A>
       </p>
 
       <Show when={submission.result?.error}>

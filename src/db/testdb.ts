@@ -48,6 +48,11 @@ CREATE TABLE suppliers (
   id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
   name text NOT NULL
 );
+CREATE TABLE categories (
+  id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+  name text NOT NULL,
+  "group" text NOT NULL
+);
 CREATE TABLE partners (
   id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
   name text NOT NULL,
