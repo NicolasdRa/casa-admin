@@ -74,7 +74,10 @@ export const fxRates = sqliteTable("fx_rates", {
 
 export const bookings = sqliteTable("bookings", {
   id: id(),
-  date: text("date").notNull(),
+  date: text("date").notNull(), // ISO check-in
+  // CA-83: ISO check-out. Nullable — legacy/imported rows only carry a check-in. When set it must
+  // be strictly after `date` (enforced in createBooking). Enables range calendar + iCal sync.
+  checkOut: text("check_out"),
   guest: text("guest").notNull(),
   currency: text("currency", { enum: ["ARS", "EUR"] }).notNull(),
   amount: integer("amount").notNull(), // cents in `currency`
@@ -88,6 +91,11 @@ export const bookings = sqliteTable("bookings", {
   type: text("type", { enum: ["booking", "cancellation", "reimbursement"] })
     .notNull()
     .default("booking"),
+  // BK: source channel. "direct" = entered by hand / owned site; OTAs are tracked so income and
+  // calendar can be split by channel. Money is always entered manually (OTA APIs don't expose it).
+  channel: text("channel", { enum: ["direct", "booking", "airbnb"] })
+    .notNull()
+    .default("direct"),
   createdAt: now(),
 });
 

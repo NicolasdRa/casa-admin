@@ -990,6 +990,31 @@ tr.total td {
   }
 }
 
+/* ─── Channel chips ─────────────────────────────────────────── */
+/* Restrained: a quiet bordered chip; OTA brand colour tints the border only, paired
+   always with the text label (never colour alone) per the accessibility bar. */
+
+.chan {
+  display: inline-block;
+  padding: 0 calc(var(--u) * 1.5);
+  font-size: 0.75rem;
+  line-height: 1.5rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  color: var(--muted, var(--navy-soft));
+  white-space: nowrap;
+}
+
+.chan-booking {
+  border-color: #003580; /* Booking.com blue */
+  color: #003580;
+}
+
+.chan-airbnb {
+  border-color: #d83a47; /* Airbnb coral, darkened for AA contrast */
+  color: #d83a47;
+}
+
 /* ─── Motion discipline ─────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {

@@ -177,6 +177,92 @@ test("occupancyByMonth groups by month, excludes cancellations, sorts chronologi
   assert.ok(!r.some((m) => m.bookings.some((b) => b.guest === "X"))); // cancellation excluded
 });
 
+test("createBooking defaults channel to direct", () => {
+  const db = dbWithRates();
+  const b = createBooking(db, { guest: "D", date: "2026-06-18", currency: "EUR", amount: 100 });
+  assert.equal(b.channel, "direct");
+});
+
+test("createBooking stores the booking channel (booking.com / airbnb)", () => {
+  const db = dbWithRates();
+  const a = createBooking(db, {
+    guest: "A",
+    date: "2026-06-18",
+    currency: "EUR",
+    amount: 100,
+    channel: "airbnb",
+  });
+  const b = createBooking(db, {
+    guest: "B",
+    date: "2026-06-18",
+    currency: "EUR",
+    amount: 100,
+    channel: "booking",
+  });
+  assert.equal(a.channel, "airbnb");
+  assert.equal(b.channel, "booking");
+});
+
+test("createBooking stores an optional check-out date (CA-83)", () => {
+  const db = dbWithRates();
+  const b = createBooking(db, {
+    guest: "Stay",
+    date: "2026-06-18",
+    checkOut: "2026-06-21",
+    currency: "EUR",
+    amount: 100,
+  });
+  assert.equal(b.checkOut, "2026-06-21");
+});
+
+test("createBooking leaves check-out null when omitted (legacy/import rows)", () => {
+  const db = dbWithRates();
+  const b = createBooking(db, { guest: "NoOut", date: "2026-06-18", currency: "EUR", amount: 100 });
+  assert.equal(b.checkOut, null);
+});
+
+test("createBooking rejects a check-out on/before check-in", () => {
+  const db = dbWithRates();
+  assert.throws(() =>
+    createBooking(db, {
+      guest: "Bad",
+      date: "2026-06-18",
+      checkOut: "2026-06-18", // same day → zero nights
+      currency: "EUR",
+      amount: 100,
+    }),
+  );
+});
+
+test("occupancyByMonth carries the check-out for range rendering (CA-83)", () => {
+  const r = occupancyByMonth([
+    { date: "2026-06-05", guest: "A", type: "booking", channel: "airbnb", checkOut: "2026-06-09" },
+  ]);
+  assert.equal(r[0].bookings[0].checkOut, "2026-06-09");
+});
+
+test("listBookings filters by channel", () => {
+  const db = dbWithRates();
+  createBooking(db, {
+    guest: "Air",
+    date: "2026-06-18",
+    currency: "EUR",
+    amount: 100,
+    channel: "airbnb",
+  });
+  createBooking(db, { guest: "Dir", date: "2026-06-18", currency: "EUR", amount: 100 });
+  const r = listBookings(db, { channel: "airbnb" });
+  assert.equal(r.length, 1);
+  assert.equal(r[0].guest, "Air");
+});
+
+test("occupancyByMonth carries the channel for the calendar", () => {
+  const r = occupancyByMonth([
+    { date: "2026-06-05", guest: "A", type: "booking", channel: "airbnb" },
+  ]);
+  assert.equal(r[0].bookings[0].channel, "airbnb");
+});
+
 test("accruedCommissionEur sums commission across bookings (BK-3)", () => {
   const db = dbWithRates();
   createBooking(db, { guest: "A", date: "2026-06-18", currency: "EUR", amount: 10000 }); // 1000 @0.1

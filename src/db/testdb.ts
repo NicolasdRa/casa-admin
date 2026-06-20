@@ -15,6 +15,7 @@ CREATE TABLE fx_rates (
 CREATE TABLE bookings (
   id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
   date text NOT NULL,
+  check_out text,
   guest text NOT NULL,
   currency text NOT NULL,
   amount integer NOT NULL,
@@ -26,6 +27,7 @@ CREATE TABLE bookings (
   commission_rate real NOT NULL,
   commission_eur integer NOT NULL,
   type text DEFAULT 'booking' NOT NULL,
+  channel text DEFAULT 'direct' NOT NULL,
   created_at text DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 CREATE TABLE settings (

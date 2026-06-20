@@ -73,6 +73,13 @@ export const es = {
     type_reimbursement: "Reembolso",
     accrued: "Comisión acumulada",
     occupancy: "Ocupación",
+    channel: "Canal",
+    channel_direct: "Directo",
+    channel_booking: "Booking.com",
+    channel_airbnb: "Airbnb",
+    channel_all: "Todos los canales",
+    checkIn: "Entrada",
+    checkOut: "Salida",
   },
   occupancy: {
     title: "Ocupación",

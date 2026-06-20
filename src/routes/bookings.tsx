@@ -18,6 +18,7 @@ interface Filter {
   guest?: string;
   from?: string;
   to?: string;
+  channel?: "direct" | "booking" | "airbnb";
 }
 
 const listBookingsQuery = query(async (filter: Filter) => {
@@ -29,17 +30,29 @@ const addBooking = action(async (form: FormData) => {
   "use server";
   const guest = String(form.get("guest") ?? "").trim();
   const date = String(form.get("date") ?? "");
+  const checkOut = String(form.get("checkOut") ?? "") || undefined;
   const currency = form.get("currency") === "ARS" ? "ARS" : "EUR";
   const amount = Number(form.get("amount"));
   const typeRaw = form.get("type");
   const type = typeRaw === "cancellation" || typeRaw === "reimbursement" ? typeRaw : "booking";
+  const channelRaw = form.get("channel");
+  const channel = channelRaw === "booking" || channelRaw === "airbnb" ? channelRaw : "direct";
   const manualRaw = Number(form.get("manualRate"));
   const manualRate = Number.isFinite(manualRaw) && manualRaw > 0 ? manualRaw : undefined;
   if (!guest) return { error: "guest_required" };
   if (!date) return { error: "date_required" };
   if (!Number.isFinite(amount) || amount <= 0) return { error: "amount_invalid" };
   try {
-    createBooking(db, { guest, date, currency, amount: toCents(amount), type, manualRate });
+    createBooking(db, {
+      guest,
+      date,
+      checkOut,
+      currency,
+      amount: toCents(amount),
+      type,
+      channel,
+      manualRate,
+    });
   } catch (e) {
     return { error: (e as Error).message };
   }
@@ -62,14 +75,26 @@ export default function Bookings() {
     const v = params[k];
     return typeof v === "string" && v ? v : undefined;
   };
+  const channelParam = () => {
+    const c = params.channel;
+    return c === "booking" || c === "airbnb" || c === "direct" ? c : undefined;
+  };
   const bookings = createAsync(
-    () => listBookingsQuery({ year: p("year"), guest: p("guest"), from: p("from"), to: p("to") }),
+    () =>
+      listBookingsQuery({
+        year: p("year"),
+        guest: p("guest"),
+        from: p("from"),
+        to: p("to"),
+        channel: channelParam(),
+      }),
     { initialValue: [] },
   );
   const summary = createMemo(() => summarizeBookings(bookings()));
   const accrued = createAsync(() => accruedQuery(), { initialValue: 0 });
   const submission = useSubmission(addBooking);
   const money = (cents: number) => fromCents(cents).toFixed(2);
+  const channelLabel = (c: string) => t(`bookings.channel_${c}` as Parameters<typeof t>[0]);
 
   return (
     <AppShell>
@@ -89,8 +114,15 @@ export default function Bookings() {
           type="date"
           name="date"
           required
+          title={t("bookings.checkIn")}
           value={date()}
           onInput={(e) => setDate(e.currentTarget.value)}
+        />
+        <input
+          type="date"
+          name="checkOut"
+          title={t("bookings.checkOut")}
+          min={date() || undefined}
         />
         <select
           name="currency"
@@ -114,6 +146,11 @@ export default function Bookings() {
           <option value="booking">{t("bookings.type_booking")}</option>
           <option value="cancellation">{t("bookings.type_cancellation")}</option>
           <option value="reimbursement">{t("bookings.type_reimbursement")}</option>
+        </select>
+        <select name="channel" title={t("bookings.channel")}>
+          <option value="direct">{t("bookings.channel_direct")}</option>
+          <option value="booking">{t("bookings.channel_booking")}</option>
+          <option value="airbnb">{t("bookings.channel_airbnb")}</option>
         </select>
         <input
           type="number"
@@ -140,6 +177,18 @@ export default function Bookings() {
         <input name="guest" placeholder={t("bookings.guest")} value={p("guest") ?? ""} />
         <input type="date" name="from" value={p("from") ?? ""} title={t("bookings.from")} />
         <input type="date" name="to" value={p("to") ?? ""} title={t("bookings.to")} />
+        <select name="channel" title={t("bookings.channel")}>
+          <option value="">{t("bookings.channel_all")}</option>
+          <option value="direct" selected={channelParam() === "direct"}>
+            {t("bookings.channel_direct")}
+          </option>
+          <option value="booking" selected={channelParam() === "booking"}>
+            {t("bookings.channel_booking")}
+          </option>
+          <option value="airbnb" selected={channelParam() === "airbnb"}>
+            {t("bookings.channel_airbnb")}
+          </option>
+        </select>
         <button type="submit" class="btn-ghost">
           {t("bookings.filter")}
         </button>
@@ -149,8 +198,10 @@ export default function Bookings() {
         <table class="cards">
           <thead>
             <tr>
-              <th>{t("common.date")}</th>
+              <th>{t("bookings.checkIn")}</th>
+              <th>{t("bookings.checkOut")}</th>
               <th>{t("bookings.guest")}</th>
+              <th>{t("bookings.channel")}</th>
               <th class="num">EUR</th>
               <th class="num">ARS</th>
               <th class="num">{t("common.rate")}</th>
@@ -159,11 +210,15 @@ export default function Bookings() {
             </tr>
           </thead>
           <tbody>
-            <For each={bookings()} fallback={<EmptyRow cols={7} text={t("bookings.empty")} />}>
+            <For each={bookings()} fallback={<EmptyRow cols={9} text={t("bookings.empty")} />}>
               {(b) => (
                 <tr>
                   <td>{b.date}</td>
+                  <td data-label={t("bookings.checkOut")}>{b.checkOut ?? "—"}</td>
                   <td data-label={t("bookings.guest")}>{b.guest}</td>
+                  <td data-label={t("bookings.channel")}>
+                    <span class={`chan chan-${b.channel}`}>{channelLabel(b.channel)}</span>
+                  </td>
                   <td class="num" data-label="EUR">
                     {money(b.amountEur)}
                   </td>

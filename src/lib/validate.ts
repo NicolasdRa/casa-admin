@@ -19,6 +19,12 @@ export function assertCurrency(s: string): "ARS" | "EUR" {
   return s;
 }
 
+/** Assert a supported booking channel. Returns the narrowed type. */
+export function assertChannel(s: string): "direct" | "booking" | "airbnb" {
+  if (s !== "direct" && s !== "booking" && s !== "airbnb") throw new Error(`invalid channel: ${s}`);
+  return s;
+}
+
 /** Assert a positive integer amount in minor units (cents). Returns it. */
 export function assertPositiveCents(cents: number): number {
   if (!Number.isInteger(cents) || cents <= 0) throw new Error(`invalid amount: ${cents}`);

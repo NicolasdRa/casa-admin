@@ -1,7 +1,12 @@
-import { and, desc, gte, like, lte } from "drizzle-orm";
+import { and, desc, eq, gte, like, lte } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { commissionEur } from "../lib/fx.ts";
-import { assertCurrency, assertIsoDate, assertPositiveCents } from "../lib/validate.ts";
+import {
+  assertChannel,
+  assertCurrency,
+  assertIsoDate,
+  assertPositiveCents,
+} from "../lib/validate.ts";
 import { manualSnapshot, snapshotForDate } from "./fx.ts";
 import * as schema from "./schema.ts";
 import { getSettings } from "./settings.ts";
@@ -11,10 +16,12 @@ type Db = BetterSQLite3Database<typeof schema>;
 export interface NewBooking {
   guest: string;
   date: string; // ISO "YYYY-MM-DD" (check-in)
+  checkOut?: string; // CA-83: ISO check-out, must be > date; omitted for single-point/legacy rows
   currency: "ARS" | "EUR";
   amount: number; // cents in `currency`
   commissionRate?: number; // BK-7: defaults to the configured Settings rate; snapshotted per booking
   type?: "booking" | "cancellation" | "reimbursement";
+  channel?: "direct" | "booking" | "airbnb"; // source platform; defaults to "direct"
   manualRate?: number; // FX-7: override the BNA rate (flagged); e.g. no quote for the date
 }
 
@@ -29,6 +36,15 @@ export function createBooking(db: Db, input: NewBooking) {
   assertIsoDate(input.date);
   assertCurrency(input.currency);
   assertPositiveCents(input.amount);
+  const channel = assertChannel(input.channel ?? "direct");
+  // CA-83: check-out is optional, but when given it must be strictly after check-in (≥ 1 night).
+  // ISO dates sort lexically, so a string compare is the date compare.
+  let checkOut: string | null = null;
+  if (input.checkOut) {
+    assertIsoDate(input.checkOut);
+    if (input.checkOut <= input.date) throw new Error(`check-out must be after check-in`);
+    checkOut = input.checkOut;
+  }
   const fx =
     input.manualRate != null
       ? manualSnapshot(input.date, input.currency, input.amount, input.manualRate)
@@ -41,6 +57,7 @@ export function createBooking(db: Db, input: NewBooking) {
     .insert(schema.bookings)
     .values({
       date: input.date,
+      checkOut,
       guest: input.guest,
       currency: input.currency,
       amount: input.amount,
@@ -52,6 +69,7 @@ export function createBooking(db: Db, input: NewBooking) {
       commissionRate,
       commissionEur: commission,
       type,
+      channel,
     })
     .returning()
     .all();
@@ -60,19 +78,24 @@ export function createBooking(db: Db, input: NewBooking) {
 
 export interface MonthOccupancy {
   month: string; // "YYYY-MM"
-  bookings: { date: string; guest: string }[];
+  bookings: { date: string; checkOut: string | null; guest: string; channel: string }[];
 }
 
 /** BK-6: actual stays grouped by month (chronological), cancellations/reimbursements excluded. */
 export function occupancyByMonth(
-  rows: { date: string; guest: string; type: string }[],
+  rows: { date: string; checkOut?: string | null; guest: string; type: string; channel?: string }[],
 ): MonthOccupancy[] {
-  const byMonth = new Map<string, { date: string; guest: string }[]>();
+  const byMonth = new Map<string, MonthOccupancy["bookings"]>();
   for (const r of rows) {
     if (r.type !== "booking") continue;
     const m = r.date.slice(0, 7);
     const list = byMonth.get(m) ?? [];
-    list.push({ date: r.date, guest: r.guest });
+    list.push({
+      date: r.date,
+      checkOut: r.checkOut ?? null,
+      guest: r.guest,
+      channel: r.channel ?? "direct",
+    });
     byMonth.set(m, list);
   }
   return [...byMonth.entries()]
@@ -108,6 +131,7 @@ export interface BookingFilter {
   guest?: string; // substring match
   from?: string; // ISO date, inclusive
   to?: string; // ISO date, inclusive
+  channel?: "direct" | "booking" | "airbnb";
 }
 
 export function listBookings(db: Db, filter: BookingFilter = {}) {
@@ -117,6 +141,7 @@ export function listBookings(db: Db, filter: BookingFilter = {}) {
   if (filter.guest) conds.push(like(schema.bookings.guest, `%${filter.guest}%`));
   if (filter.from) conds.push(gte(schema.bookings.date, filter.from));
   if (filter.to) conds.push(lte(schema.bookings.date, filter.to));
+  if (filter.channel) conds.push(eq(schema.bookings.channel, filter.channel));
   return db
     .select()
     .from(schema.bookings)

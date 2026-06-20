@@ -34,8 +34,15 @@ export default function Occupancy() {
                 <For each={m.bookings}>
                   {(b) => (
                     <tr>
-                      <td style={{ width: "8rem" }}>{b.date}</td>
+                      <td style={{ width: "11rem" }}>
+                        {b.checkOut ? `${b.date} → ${b.checkOut}` : b.date}
+                      </td>
                       <td>{b.guest}</td>
+                      <td style={{ width: "8rem" }}>
+                        <span class={`chan chan-${b.channel}`}>
+                          {t(`bookings.channel_${b.channel}` as Parameters<typeof t>[0])}
+                        </span>
+                      </td>
                     </tr>
                   )}
                 </For>
