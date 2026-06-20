@@ -24,6 +24,13 @@ export const en = {
   expenses: {
     detail: "Detail",
     category: "Category",
+    supplier: "Supplier",
     empty: "No expenses yet.",
+  },
+  suppliers: {
+    title: "Suppliers",
+    name: "Name",
+    manage: "Manage suppliers",
+    empty: "No suppliers yet.",
   },
 };
