@@ -41,6 +41,17 @@ CREATE TABLE suppliers (
   id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
   name text NOT NULL
 );
+CREATE TABLE partners (
+  id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+  name text NOT NULL,
+  default_share real DEFAULT 0.5 NOT NULL
+);
+CREATE TABLE expense_splits (
+  id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+  expense_id integer NOT NULL,
+  partner_id integer NOT NULL,
+  amount_eur integer NOT NULL
+);
 CREATE TABLE expenses (
   id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
   date text NOT NULL,
