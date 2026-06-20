@@ -7,11 +7,13 @@ import { createPartner, listPartners } from "./partners.ts";
 import { categories } from "./schema.ts";
 import { createUser, listUsers } from "./users.ts";
 
+// Roughly in line with the imported historical trend (~1640 in May 2026) so a fresh seed doesn't
+// dip below the real back-filled rates. Replace with live quotes via `pnpm fx:fetch`.
 const rates = [
-  { date: "2026-06-17", compra: 1175, venta: 1215 },
-  { date: "2026-06-18", compra: 1180, venta: 1220 },
-  { date: "2026-06-19", compra: 1185, venta: 1225 },
-  { date: "2026-06-20", compra: 1190, venta: 1230 },
+  { date: "2026-06-17", compra: 1620, venta: 1700 },
+  { date: "2026-06-18", compra: 1625, venta: 1705 },
+  { date: "2026-06-19", compra: 1630, venta: 1710 },
+  { date: "2026-06-20", compra: 1635, venta: 1715 },
 ];
 
 for (const r of rates) upsertFxRate(db, r);
