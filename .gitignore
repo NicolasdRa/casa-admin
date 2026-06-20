@@ -11,3 +11,4 @@ dist
 *.db-shm
 *.db-wal
 .env
+.playwright-mcp
