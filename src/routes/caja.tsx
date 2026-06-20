@@ -160,9 +160,9 @@ export default function Caja() {
                 <th class="num">{t("caja.income")}</th>
                 <th class="num">{t("caja.commission")}</th>
                 <th class="num">{t("caja.expenseShare")}</th>
-                <th class="num">{t("caja.result")}</th>
-                <th class="num">{t("caja.expenseNet")}</th>
+                <th class="num">{t("caja.fronted")}</th>
                 <th class="num">{t("caja.cashAccount")}</th>
+                <th class="num">{t("caja.settle")}</th>
               </tr>
             </thead>
             <tbody>
@@ -179,14 +179,14 @@ export default function Caja() {
                     <td class="num" data-label={t("caja.expenseShare")}>
                       {money(s.expenseShare)}
                     </td>
-                    <td class={sign(s.result)} data-label={t("caja.result")}>
-                      {money(s.result)}
-                    </td>
-                    <td class="num" data-label={t("caja.expenseNet")}>
-                      {money(s.expenseNet)}
+                    <td class="num" data-label={t("caja.fronted")}>
+                      {money(s.fronted)}
                     </td>
                     <td class={sign(s.cashAccount)} data-label={t("caja.cashAccount")}>
                       {money(s.cashAccount)}
+                    </td>
+                    <td class={sign(s.settle)} data-label={t("caja.settle")}>
+                      {money(s.settle)}
                     </td>
                   </tr>
                 )}

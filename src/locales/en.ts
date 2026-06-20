@@ -106,10 +106,10 @@ export const en = {
     statements: "Per-partner statement",
     income: "Income",
     commission: "Commission",
-    expenseShare: "Expenses",
-    result: "Result",
-    expenseNet: "Expense net",
+    expenseShare: "Expenses (share)",
+    fronted: "Fronted",
     cashAccount: "Cash account",
+    settle: "Saldo to settle",
     empty: "No entries yet.",
   },
   maintenance: {

@@ -106,10 +106,10 @@ export const es = {
     statements: "Estado por socio",
     income: "Ingresos",
     commission: "Comisión",
-    expenseShare: "Gastos",
-    result: "Resultado",
-    expenseNet: "Neto gastos",
+    expenseShare: "Gastos (parte)",
+    fronted: "Adelantado",
     cashAccount: "Cuenta caja",
+    settle: "Saldo a liquidar",
     empty: "Sin movimientos todavía.",
   },
   maintenance: {

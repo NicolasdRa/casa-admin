@@ -39,13 +39,18 @@ test("partnerStatements combines income/commission/expense shares, settlement ne
     type: "contribution",
   });
 
-  const A = partnerStatements(db).find((s) => s.partnerId === a.id);
-  assert.ok(A);
+  const sts = partnerStatements(db);
+  const A = sts.find((s) => s.partnerId === a.id);
+  const B = sts.find((s) => s.partnerId === b.id);
+  assert.ok(A && B);
   assert.equal(A.incomeShare, 15000); // 30000 * 50%
   assert.equal(A.commissionShare, 1500); // 3000 * 50%
   assert.equal(A.expenseShare, 5000); // 10000 * 50%
-  assert.equal(A.result, 8500); // 15000 - 1500 - 5000
   assert.equal(A.fronted, 10000);
-  assert.equal(A.expenseNet, 5000); // fronted 10000 - fair 5000
   assert.equal(A.cashAccount, 5000);
+  // Saldo discounts the fair expense share and commission ONCE, adds fronting + cash once.
+  assert.equal(A.settle, 23500); // 15000 - 1500 - 5000 + 10000 + 5000
+  assert.equal(B.settle, 8500); // 15000 - 1500 - 5000 + 0 + 0 (B fronted nothing)
+  // Conservation: saldos distribute income − commission + net cash; nothing double-counted.
+  assert.equal(A.settle + B.settle, 30000 - 3000 + 5000);
 });
