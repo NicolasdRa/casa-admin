@@ -65,6 +65,9 @@ export default function Dashboard() {
         <Show when={user() && can(user()!.role, "manageUsers")}>
           <A href="/users">{t("users.manage")}</A>
         </Show>
+        <Show when={user() && can(user()!.role, "manageSettings")}>
+          <A href="/settings">{t("settings.manage")}</A>
+        </Show>
       </nav>
       <p style={{ "margin-top": "2rem", color: "#999" }}>
         Foundation scaffold — schema, FX core and i18n are wired. Modules come next.

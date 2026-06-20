@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createBooking, listBookings, summarizeBookings } from "./bookings.ts";
+import {
+  accruedCommissionEur,
+  createBooking,
+  listBookings,
+  summarizeBookings,
+} from "./bookings.ts";
 import { upsertFxRate } from "./fx.ts";
+import { updateSettings } from "./settings.ts";
 import { makeTestDb } from "./testdb.ts";
 
 function dbWithRates() {
@@ -114,4 +120,39 @@ test("summarizeBookings on empty input", () => {
     years: [],
     total: { year: "", count: 0, incomeEur: 0, incomeArs: 0, commissionEur: 0 },
   });
+});
+
+test("createBooking uses the Settings commission rate by default (BK-7)", () => {
+  const db = dbWithRates();
+  updateSettings(db, { commissionRate: 0.2 });
+  const b = createBooking(db, { guest: "S", date: "2026-06-18", currency: "EUR", amount: 10000 });
+  assert.equal(b.commissionRate, 0.2);
+  assert.equal(b.commissionEur, 2000);
+});
+
+test("cancellations/reimbursements carry zero commission (BK-5)", () => {
+  const db = dbWithRates();
+  const c = createBooking(db, {
+    guest: "X",
+    date: "2026-06-18",
+    currency: "EUR",
+    amount: 10000,
+    type: "cancellation",
+  });
+  assert.equal(c.type, "cancellation");
+  assert.equal(c.commissionEur, 0);
+});
+
+test("accruedCommissionEur sums commission across bookings (BK-3)", () => {
+  const db = dbWithRates();
+  createBooking(db, { guest: "A", date: "2026-06-18", currency: "EUR", amount: 10000 }); // 1000 @0.1
+  createBooking(db, { guest: "B", date: "2026-06-18", currency: "EUR", amount: 20000 }); // 2000
+  createBooking(db, {
+    guest: "C",
+    date: "2026-06-18",
+    currency: "EUR",
+    amount: 10000,
+    type: "cancellation",
+  }); // 0
+  assert.equal(accruedCommissionEur(db), 3000);
 });

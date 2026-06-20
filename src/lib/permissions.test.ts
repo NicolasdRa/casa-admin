@@ -1,6 +1,28 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { can } from "./permissions.ts";
+import { can, userEditError } from "./permissions.ts";
+
+const su = { id: 1, role: "superadmin" as const };
+const su2 = { id: 2, role: "superadmin" as const };
+const admin = { id: 3, role: "admin" as const };
+
+test("userEditError: cannot edit your own role/status (anti-lockout)", () => {
+  assert.equal(userEditError(su, su, { role: "admin", status: "active" }, 2), "self");
+});
+
+test("userEditError: cannot demote/disable the last active superadmin", () => {
+  assert.equal(userEditError(su, su2, { role: "admin", status: "active" }, 1), "last_superadmin");
+  assert.equal(
+    userEditError(su, su2, { role: "superadmin", status: "disabled" }, 1),
+    "last_superadmin",
+  );
+  // fine when another superadmin remains
+  assert.equal(userEditError(su, su2, { role: "admin", status: "active" }, 2), null);
+});
+
+test("userEditError: ordinary edits allowed", () => {
+  assert.equal(userEditError(su, admin, { role: "user", status: "disabled" }, 2), null);
+});
 
 test("superadmin-only capabilities", () => {
   assert.equal(can("superadmin", "manageUsers"), true);

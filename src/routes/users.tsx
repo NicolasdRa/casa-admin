@@ -1,10 +1,10 @@
 import { action, createAsync, query, redirect, useSubmission } from "@solidjs/router";
 import { For, Show } from "solid-js";
 import { db } from "~/db/index";
-import { createUser, listUsers, updateUser } from "~/db/users";
+import { createUser, getUserById, listUsers, updateUser } from "~/db/users";
 import { useI18n } from "~/lib/i18n";
 import { hashPassword } from "~/lib/password";
-import { can, type Role } from "~/lib/permissions";
+import { can, type Role, userEditError } from "~/lib/permissions";
 import { currentUser } from "~/lib/session";
 
 async function requireManageUsers() {
@@ -45,11 +45,19 @@ const addUser = action(async (form: FormData) => {
 
 const editUser = action(async (form: FormData) => {
   "use server";
-  await requireManageUsers();
-  updateUser(db, Number(form.get("id")), {
+  const me = await requireManageUsers();
+  const target = getUserById(db, Number(form.get("id")));
+  if (!target) return { error: "notfound" };
+  const next = {
     role: toRole(form.get("role")),
-    status: form.get("status") === "disabled" ? "disabled" : "active",
-  });
+    status: form.get("status") === "disabled" ? ("disabled" as const) : ("active" as const),
+  };
+  const activeSuperadmins = listUsers(db).filter(
+    (u) => u.role === "superadmin" && u.status === "active",
+  ).length;
+  const err = userEditError(me, target, next, activeSuperadmins);
+  if (err) return { error: err };
+  updateUser(db, target.id, next);
   return { ok: true };
 }, "editUser");
 
@@ -57,6 +65,7 @@ export default function Users() {
   const { t } = useI18n();
   const users = createAsync(() => usersQuery(), { initialValue: [] });
   const adding = useSubmission(addUser);
+  const editing = useSubmission(editUser);
   const cell = { padding: "0.4rem 0.6rem", "border-bottom": "1px solid #eee" } as const;
   const roles: Role[] = ["superadmin", "admin", "user"];
 
@@ -96,6 +105,9 @@ export default function Users() {
       </form>
       <Show when={adding.result?.error}>
         <p style={{ color: "crimson" }}>{t("users.addError")}</p>
+      </Show>
+      <Show when={editing.result?.error}>
+        <p style={{ color: "crimson" }}>{t("users.editError")}</p>
       </Show>
 
       <table style={{ "border-collapse": "collapse", width: "100%" }}>

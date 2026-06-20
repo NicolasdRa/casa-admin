@@ -43,3 +43,22 @@ const MATRIX: Record<Capability, Role[]> = {
 };
 
 export const can = (role: Role, capability: Capability) => MATRIX[capability].includes(role);
+
+/**
+ * Guard for editing a user's role/status. Returns a reason to reject, or null if allowed.
+ * Prevents an admin from locking themselves/everyone out:
+ *  - no editing your own role/status (anti self-lockout)
+ *  - never demote or disable the last active superadmin
+ */
+export function userEditError(
+  me: { id: number; role: Role },
+  target: { id: number; role: Role },
+  next: { role: Role; status: "active" | "disabled" },
+  activeSuperadmins: number,
+): "self" | "last_superadmin" | null {
+  if (target.id === me.id) return "self";
+  const removesSuperadmin =
+    target.role === "superadmin" && (next.role !== "superadmin" || next.status !== "active");
+  if (removesSuperadmin && activeSuperadmins <= 1) return "last_superadmin";
+  return null;
+}

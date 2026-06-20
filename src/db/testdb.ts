@@ -28,6 +28,13 @@ CREATE TABLE bookings (
   type text DEFAULT 'booking' NOT NULL,
   created_at text DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
+CREATE TABLE settings (
+  id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+  commission_rate real DEFAULT 0.1 NOT NULL,
+  fx_source text DEFAULT 'BNA' NOT NULL,
+  default_locale text DEFAULT 'es' NOT NULL,
+  backup_cadence text DEFAULT 'daily' NOT NULL
+);
 CREATE TABLE users (
   id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
   name text NOT NULL,

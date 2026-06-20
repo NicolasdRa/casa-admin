@@ -1,7 +1,12 @@
 import { action, createAsync, query, useSearchParams, useSubmission } from "@solidjs/router";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import { FxPreview } from "~/components/FxPreview";
-import { createBooking, listBookings, summarizeBookings } from "~/db/bookings";
+import {
+  accruedCommissionEur,
+  createBooking,
+  listBookings,
+  summarizeBookings,
+} from "~/db/bookings";
 import { db } from "~/db/index";
 import { useI18n } from "~/lib/i18n";
 import { fromCents, toCents } from "~/lib/money";
@@ -24,16 +29,23 @@ const addBooking = action(async (form: FormData) => {
   const date = String(form.get("date") ?? "");
   const currency = form.get("currency") === "ARS" ? "ARS" : "EUR";
   const amount = Number(form.get("amount"));
+  const typeRaw = form.get("type");
+  const type = typeRaw === "cancellation" || typeRaw === "reimbursement" ? typeRaw : "booking";
   if (!guest) return { error: "guest_required" };
   if (!date) return { error: "date_required" };
   if (!Number.isFinite(amount) || amount <= 0) return { error: "amount_invalid" };
   try {
-    createBooking(db, { guest, date, currency, amount: toCents(amount) });
+    createBooking(db, { guest, date, currency, amount: toCents(amount), type });
   } catch (e) {
     return { error: (e as Error).message };
   }
   return { ok: true };
 }, "addBooking");
+
+const accruedQuery = query(async () => {
+  "use server";
+  return accruedCommissionEur(db);
+}, "accruedCommission");
 
 export default function Bookings() {
   const { t } = useI18n();
@@ -50,6 +62,7 @@ export default function Bookings() {
     { initialValue: [] },
   );
   const summary = createMemo(() => summarizeBookings(bookings()));
+  const accrued = createAsync(() => accruedQuery(), { initialValue: 0 });
   const submission = useSubmission(addBooking);
   const money = (cents: number) => fromCents(cents).toFixed(2);
   const cell = { padding: "0.4rem 0.6rem", "border-bottom": "1px solid #eee" } as const;
@@ -64,6 +77,9 @@ export default function Bookings() {
       }}
     >
       <h1>{t("nav.bookings")}</h1>
+      <p style={{ color: "#555" }}>
+        {t("bookings.accrued")}: {money(accrued())} EUR
+      </p>
 
       <form
         action={addBooking}
@@ -96,6 +112,11 @@ export default function Bookings() {
           value={amount() || ""}
           onInput={(e) => setAmount(Number(e.currentTarget.value))}
         />
+        <select name="type">
+          <option value="booking">{t("bookings.type_booking")}</option>
+          <option value="cancellation">{t("bookings.type_cancellation")}</option>
+          <option value="reimbursement">{t("bookings.type_reimbursement")}</option>
+        </select>
         <button type="submit">{t("common.save")}</button>
       </form>
 
