@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // Conventions:
@@ -6,7 +7,8 @@ import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 // - FX snapshot fields (currency, amount, fx_rate, fx_rate_date, amount_eur, amount_ars) are written once and never recomputed.
 
 const id = () => integer("id").primaryKey({ autoIncrement: true });
-const now = () => text("created_at").notNull().default("CURRENT_TIMESTAMP");
+// sql`` so SQLite evaluates CURRENT_TIMESTAMP at insert; a plain string would store the literal text.
+const now = () => text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`);
 
 export const property = sqliteTable("property", {
   id: id(),
