@@ -51,6 +51,17 @@ export function snapshotForDate(db: Db, date: string, currency: Currency, amount
   return { fxRate: rate.average, fxRateDate: rate.date, amountEur, amountArs };
 }
 
+/** FX-9: the most recent rates, oldest→newest, for the trend sparkline. */
+export function listRecentFxRates(db: Db, limit = 30) {
+  return db
+    .select()
+    .from(schema.fxRates)
+    .orderBy(desc(schema.fxRates.date))
+    .limit(limit)
+    .all()
+    .reverse();
+}
+
 /** FX-7: build a snapshot from a user-supplied rate (e.g. weekend/holiday with no BNA quote).
  *  Same shape as snapshotForDate; rate-date is the entry date. Caller flags the row as overridden. */
 export function manualSnapshot(

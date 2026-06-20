@@ -40,15 +40,27 @@ if (listPartners(db).length === 0) {
 // PRD §3 role accounts. Placeholder emails for Anastasia/co-host — change them, and the temp
 // password, after first login. Idempotent — only seeds an empty users table.
 const TEMP_PASSWORD = "changeme123";
+// EX-8: owner accounts map to the partner they represent; the co-host has no partner mapping.
+const partnerByName = new Map(listPartners(db).map((p) => [p.name, p.id]));
 const users = [
   { name: "Admin", email: "ndr@nuuk.de", role: "superadmin" as const },
-  { name: "Nicolás", email: "nicolasdirago@gmail.com", role: "admin" as const },
-  { name: "Anastasia", email: "anastasia@casabosque.local", role: "admin" as const },
+  { name: "Nicolás", email: "nicolasdirago@gmail.com", role: "admin" as const, partner: "Nicolás" },
+  {
+    name: "Anastasia",
+    email: "anastasia@casabosque.local",
+    role: "admin" as const,
+    partner: "Anastasia",
+  },
   { name: "Co-host", email: "cohost@casabosque.local", role: "user" as const },
 ];
 if (listUsers(db).length === 0) {
   const passwordHash = hashPassword(TEMP_PASSWORD);
-  for (const u of users) createUser(db, { ...u, passwordHash });
+  for (const { partner, ...u } of users)
+    createUser(db, {
+      ...u,
+      passwordHash,
+      partnerId: partner ? partnerByName.get(partner) : undefined,
+    });
   console.log(
     `seeded ${users.length} users — TEMP PASSWORD for all: "${TEMP_PASSWORD}" (change after first login)`,
   );

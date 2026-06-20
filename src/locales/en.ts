@@ -19,6 +19,7 @@ export const en = {
   },
   fx: {
     noRate: "No BNA rate for this date — a manual rate will be required.",
+    trend: "BNA EUR trend",
   },
   auth: {
     login: "Sign in",
@@ -66,8 +67,16 @@ export const en = {
     category: "Category",
     supplier: "Supplier",
     empty: "No expenses yet.",
-    byPartner: "By partner",
     receipt: "Receipt",
+    payer: "Paid by",
+    byUser: "By user",
+    allUsers: "All",
+    unassigned: "Unassigned",
+    unattributed: "{count} expenses ({total} €) unattributed — assign a payer to include them.",
+    reimbursement: "Reimbursement",
+    status_pending: "Pending",
+    status_reimbursed: "Reimbursed",
+    reimburse: "Reimburse",
   },
   suppliers: {
     title: "Suppliers",

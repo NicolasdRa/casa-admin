@@ -42,7 +42,8 @@ CREATE TABLE users (
   password_hash text NOT NULL,
   role text NOT NULL,
   locale text DEFAULT 'es' NOT NULL,
-  status text DEFAULT 'active' NOT NULL
+  status text DEFAULT 'active' NOT NULL,
+  partner_id integer
 );
 CREATE TABLE suppliers (
   id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -58,12 +59,6 @@ CREATE TABLE partners (
   name text NOT NULL,
   default_share real DEFAULT 0.5 NOT NULL
 );
-CREATE TABLE expense_splits (
-  id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-  expense_id integer NOT NULL,
-  partner_id integer NOT NULL,
-  amount_eur integer NOT NULL
-);
 CREATE TABLE expenses (
   id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
   date text NOT NULL,
@@ -78,7 +73,18 @@ CREATE TABLE expenses (
   amount_eur integer NOT NULL,
   amount_ars integer NOT NULL,
   receipt_url text,
+  paid_by_user_id integer,
+  reimbursed_at text,
+  reimbursed_by_user_id integer,
   created_at text DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+CREATE TABLE cash_entries (
+  id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+  date text NOT NULL,
+  partner_id integer NOT NULL,
+  concept text NOT NULL,
+  amount_eur integer NOT NULL,
+  type text NOT NULL
 );
 `;
 

@@ -36,6 +36,9 @@ export const users = sqliteTable("users", {
   status: text("status", { enum: ["active", "disabled"] })
     .notNull()
     .default("active"),
+  // EX-8: links an auth account to the owner it represents. Null = co-host (not an owner) → its
+  // expenses are reimbursed (EX-9), never part of the owner split.
+  partnerId: integer("partner_id").references(() => partners.id),
 });
 
 export const partners = sqliteTable("partners", {
@@ -100,18 +103,14 @@ export const expenses = sqliteTable("expenses", {
   amountEur: integer("amount_eur").notNull(), // cents
   amountArs: integer("amount_ars").notNull(), // cents
   receiptUrl: text("receipt_url"),
+  // EX-8: who fronted this expense in full. Null = unattributed (import/blank) → excluded from the
+  // owner settlement until a payer is assigned. The owner split is derived at the balance, not here.
+  paidByUserId: integer("paid_by_user_id").references(() => users.id),
+  // EX-9: co-host-paid expenses get reimbursed by an admin. Set → the cost transfers to the
+  // reimbursing owner (who then counts as the fronter for settlement).
+  reimbursedAt: text("reimbursed_at"), // ISO date, null = not reimbursed
+  reimbursedByUserId: integer("reimbursed_by_user_id").references(() => users.id),
   createdAt: now(),
-});
-
-export const expenseSplits = sqliteTable("expense_splits", {
-  id: id(),
-  expenseId: integer("expense_id")
-    .notNull()
-    .references(() => expenses.id, { onDelete: "cascade" }),
-  partnerId: integer("partner_id")
-    .notNull()
-    .references(() => partners.id),
-  amountEur: integer("amount_eur").notNull(), // resolved cents this partner owes (see lib/split.ts)
 });
 
 export const cashEntries = sqliteTable("cash_entries", {

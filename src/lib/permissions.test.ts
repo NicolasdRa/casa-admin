@@ -33,6 +33,7 @@ test("superadmin-only capabilities", () => {
 test("admin+ capabilities exclude the co-host (user)", () => {
   for (const cap of [
     "deleteBookings",
+    "reimburseExpenses",
     "viewNetResults",
     "viewPartnerStatements",
     "viewAuditLog",

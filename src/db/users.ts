@@ -10,12 +10,18 @@ export interface NewUser {
   passwordHash: string;
   role: "superadmin" | "admin" | "user";
   locale?: "es" | "en";
+  partnerId?: number; // EX-8: owner this account represents; omit for the co-host
 }
 
 export function createUser(db: Db, u: NewUser) {
   const [row] = db
     .insert(schema.users)
-    .values({ ...u, email: u.email.toLowerCase(), locale: u.locale ?? "es" })
+    .values({
+      ...u,
+      email: u.email.toLowerCase(),
+      locale: u.locale ?? "es",
+      partnerId: u.partnerId ?? null,
+    })
     .returning()
     .all();
   return row;
@@ -40,6 +46,7 @@ export type UserPatch = Partial<{
   role: "superadmin" | "admin" | "user";
   locale: "es" | "en";
   status: "active" | "disabled";
+  partnerId: number | null;
 }>;
 
 export function updateUser(db: Db, id: number, patch: UserPatch) {

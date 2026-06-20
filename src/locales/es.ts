@@ -19,6 +19,7 @@ export const es = {
   },
   fx: {
     noRate: "Sin cambio BNA para esta fecha — se requerirá un cambio manual.",
+    trend: "Tendencia BNA EUR",
   },
   auth: {
     login: "Iniciar sesión",
@@ -66,8 +67,16 @@ export const es = {
     category: "Categoría",
     supplier: "Proveedor",
     empty: "Sin gastos todavía.",
-    byPartner: "Por socio",
     receipt: "Comprobante",
+    payer: "Pagado por",
+    byUser: "Por usuario",
+    allUsers: "Todos",
+    unassigned: "Sin asignar",
+    unattributed: "{count} gastos ({total} €) sin asignar — asigná un pagador para incluirlos.",
+    reimbursement: "Reembolso",
+    status_pending: "Pendiente",
+    status_reimbursed: "Reembolsado",
+    reimburse: "Reembolsar",
   },
   suppliers: {
     title: "Proveedores",

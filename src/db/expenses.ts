@@ -1,9 +1,8 @@
 import { desc, eq } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import { splitByShare } from "../lib/split.ts";
 import { manualSnapshot, snapshotForDate } from "./fx.ts";
-import { listPartners } from "./partners.ts";
 import * as schema from "./schema.ts";
+import { getUserById, listUsers } from "./users.ts";
 
 type Db = BetterSQLite3Database<typeof schema>;
 
@@ -16,6 +15,7 @@ export interface NewExpense {
   supplierId?: number;
   receiptUrl?: string; // EX-6: stored receipt filename, served via /api/receipt
   manualRate?: number; // FX-7: override the BNA rate (flagged)
+  paidByUserId?: number; // EX-8: who fronted it in full; omit for unattributed (import/blank)
 }
 
 /** Lowercased file extension restricted to [a-z0-9] (max 5). "" if none — guards against odd names. */
@@ -45,6 +45,7 @@ export function createExpense(db: Db, input: NewExpense) {
       categoryId: input.categoryId ?? null,
       supplierId: input.supplierId ?? null,
       receiptUrl: input.receiptUrl ?? null,
+      paidByUserId: input.paidByUserId ?? null,
       fxRate: fx.fxRate,
       fxRateDate: fx.fxRateDate,
       fxOverridden: input.manualRate != null,
@@ -53,22 +54,8 @@ export function createExpense(db: Db, input: NewExpense) {
     })
     .returning()
     .all();
-
-  // EX-3: split the EUR total across partners by their default share (largest-remainder, no lost cents).
-  // Only when partners exist and their shares sum to ~1; otherwise skip rather than persist an unbalanced split.
-  const partners = listPartners(db);
-  const shareSum = partners.reduce((s, p) => s + p.defaultShare, 0);
-  if (partners.length > 0 && Math.abs(shareSum - 1) < 1e-9) {
-    const splits = splitByShare(
-      row.amountEur,
-      partners.map((p) => ({ partnerId: p.id, share: p.defaultShare })),
-    );
-    db.insert(schema.expenseSplits)
-      .values(
-        splits.map((s) => ({ expenseId: row.id, partnerId: s.partnerId, amountEur: s.amountEur })),
-      )
-      .run();
-  }
+  // EX-8/EX-11: the expense is fronted in full by `paidByUserId`. No per-expense partner split —
+  // the owner split is derived once at the final balance (see settlement.ts).
   return row;
 }
 
@@ -111,14 +98,68 @@ export function createCategory(db: Db, input: { name: string; group: CategoryGro
   return row;
 }
 
-/** Aggregate each partner's total expense share (EUR cents) across all splits. */
-export function expenseTotalsByPartner(db: Db) {
-  const partners = listPartners(db);
-  // ponytail: JS aggregation over a tiny split table; move to a SQL GROUP BY if it ever grows.
-  const splits = db.select().from(schema.expenseSplits).all();
-  return partners.map((p) => ({
-    partnerId: p.id,
-    name: p.name,
-    totalEur: splits.filter((s) => s.partnerId === p.id).reduce((a, s) => a + s.amountEur, 0),
+/** EX-8: total EUR (cents) fronted, grouped by payer. Null payer (unattributed) gets its own bucket. */
+export function expenseTotalsByUser(db: Db) {
+  const nameById = new Map(listUsers(db).map((u) => [u.id, u.name]));
+  // ponytail: JS aggregation over a tiny table; move to SQL GROUP BY if it ever grows.
+  const totals = new Map<number | null, number>();
+  for (const e of listExpenses(db)) {
+    totals.set(e.paidByUserId, (totals.get(e.paidByUserId) ?? 0) + e.amountEur);
+  }
+  return [...totals].map(([userId, totalEur]) => ({
+    userId,
+    name: userId == null ? null : (nameById.get(userId) ?? null),
+    totalEur,
   }));
+}
+
+/** EX-10: expenses enriched with payer name + reimbursement status for the list view. */
+export function listExpensesWithPayer(db: Db) {
+  const byId = new Map(listUsers(db).map((u) => [u.id, u]));
+  return listExpenses(db).map((e) => {
+    const payer = e.paidByUserId != null ? (byId.get(e.paidByUserId) ?? null) : null;
+    return {
+      ...e,
+      payerUserId: e.paidByUserId,
+      payerName: payer?.name ?? null,
+      reimbursement: reimbursementStatus(e, payer),
+    };
+  });
+}
+
+export type ReimbursementStatus = "not_applicable" | "pending" | "reimbursed";
+
+/**
+ * EX-9: an expense is reimbursable only when a co-host (role `user`, no owner mapping) fronted it.
+ * Owner/admin-paid expenses are `not_applicable` — that's the owner's own money.
+ */
+export function reimbursementStatus(
+  expense: { reimbursedAt: string | null },
+  payer: { role: string } | null,
+): ReimbursementStatus {
+  if (expense.reimbursedAt != null) return "reimbursed";
+  return payer?.role === "user" ? "pending" : "not_applicable";
+}
+
+/**
+ * EX-9: admin reimburses a co-host's out-of-pocket expense. The cost transfers to the reimbursing
+ * owner (who must map to a partner), so settlement counts it as fronted by them. Permission
+ * (`reimburseExpenses`) is enforced at the route; the owner-mapping check here also blocks a co-host.
+ */
+export function markExpenseReimbursed(db: Db, expenseId: number, byUserId: number, date: string) {
+  const expense = getExpenseById(db, expenseId);
+  if (!expense) throw new Error("expense not found");
+  const payer = expense.paidByUserId != null ? getUserById(db, expense.paidByUserId) : null;
+  if (reimbursementStatus(expense, payer) !== "pending")
+    throw new Error("only a pending co-host expense can be reimbursed");
+  const reimburser = getUserById(db, byUserId);
+  if (!reimburser || reimburser.partnerId == null)
+    throw new Error("reimburser must be an owner (mapped to a partner)");
+  const [row] = db
+    .update(schema.expenses)
+    .set({ reimbursedAt: date, reimbursedByUserId: byUserId })
+    .where(eq(schema.expenses.id, expenseId))
+    .returning()
+    .all();
+  return row;
 }

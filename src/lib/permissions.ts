@@ -10,6 +10,7 @@ export type Capability =
   | "deleteBookings"
   | "createExpenses"
   | "deleteExpenses"
+  | "reimburseExpenses"
   | "managePartnersCash"
   | "maintenanceTasks"
   | "viewTotals"
@@ -32,6 +33,7 @@ const MATRIX: Record<Capability, Role[]> = {
   deleteBookings: ADMINS,
   createExpenses: ALL,
   deleteExpenses: ADMINS,
+  reimburseExpenses: ADMINS, // EX-9: admin reimburses a co-host's out-of-pocket expense
   managePartnersCash: ADMINS,
   maintenanceTasks: ALL,
   viewTotals: ALL,
