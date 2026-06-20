@@ -1,4 +1,4 @@
-import { action, createAsync, query, useSearchParams, useSubmission } from "@solidjs/router";
+import { A, action, createAsync, query, useSearchParams, useSubmission } from "@solidjs/router";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import { FxPreview } from "~/components/FxPreview";
 import {
@@ -78,7 +78,8 @@ export default function Bookings() {
     >
       <h1>{t("nav.bookings")}</h1>
       <p style={{ color: "#555" }}>
-        {t("bookings.accrued")}: {money(accrued())} EUR
+        {t("bookings.accrued")}: {money(accrued())} EUR ·{" "}
+        <A href="/occupancy">{t("bookings.occupancy")}</A>
       </p>
 
       <form

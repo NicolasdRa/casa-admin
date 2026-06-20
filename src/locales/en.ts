@@ -55,6 +55,10 @@ export const en = {
     type_cancellation: "Cancellation",
     type_reimbursement: "Reimbursement",
     accrued: "Accrued commission",
+    occupancy: "Occupancy",
+  },
+  occupancy: {
+    title: "Occupancy",
   },
   expenses: {
     detail: "Detail",

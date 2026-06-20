@@ -50,6 +50,31 @@ export function createBooking(db: Db, input: NewBooking) {
   return row;
 }
 
+export interface MonthOccupancy {
+  month: string; // "YYYY-MM"
+  bookings: { date: string; guest: string }[];
+}
+
+/** BK-6: actual stays grouped by month (chronological), cancellations/reimbursements excluded. */
+export function occupancyByMonth(
+  rows: { date: string; guest: string; type: string }[],
+): MonthOccupancy[] {
+  const byMonth = new Map<string, { date: string; guest: string }[]>();
+  for (const r of rows) {
+    if (r.type !== "booking") continue;
+    const m = r.date.slice(0, 7);
+    const list = byMonth.get(m) ?? [];
+    list.push({ date: r.date, guest: r.guest });
+    byMonth.set(m, list);
+  }
+  return [...byMonth.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([month, bookings]) => ({
+      month,
+      bookings: bookings.sort((x, y) => x.date.localeCompare(y.date)),
+    }));
+}
+
 /** BK-3: total commission accrued to the co-host across all bookings (EUR cents). */
 export function accruedCommissionEur(db: Db) {
   // ponytail: JS sum over the bookings table (small); move to SUM() in SQL if it grows large.

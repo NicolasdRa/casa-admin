@@ -4,6 +4,7 @@ import {
   accruedCommissionEur,
   createBooking,
   listBookings,
+  occupancyByMonth,
   summarizeBookings,
 } from "./bookings.ts";
 import { upsertFxRate } from "./fx.ts";
@@ -141,6 +142,24 @@ test("cancellations/reimbursements carry zero commission (BK-5)", () => {
   });
   assert.equal(c.type, "cancellation");
   assert.equal(c.commissionEur, 0);
+});
+
+test("occupancyByMonth groups by month, excludes cancellations, sorts chronologically (BK-6)", () => {
+  const rows = [
+    { date: "2026-07-10", guest: "B", type: "booking" },
+    { date: "2026-06-05", guest: "A", type: "booking" },
+    { date: "2026-06-20", guest: "X", type: "cancellation" },
+    { date: "2026-06-12", guest: "C", type: "booking" },
+  ];
+  const r = occupancyByMonth(rows);
+  assert.equal(r.length, 2);
+  assert.equal(r[0].month, "2026-06");
+  assert.deepEqual(
+    r[0].bookings.map((b) => b.guest),
+    ["A", "C"], // sorted by date within the month
+  );
+  assert.equal(r[1].month, "2026-07");
+  assert.ok(!r.some((m) => m.bookings.some((b) => b.guest === "X"))); // cancellation excluded
 });
 
 test("accruedCommissionEur sums commission across bookings (BK-3)", () => {
