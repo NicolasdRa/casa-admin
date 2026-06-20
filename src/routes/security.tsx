@@ -1,5 +1,6 @@
 import { action, createAsync, query, useSubmission } from "@solidjs/router";
 import { Show } from "solid-js";
+import { AppShell } from "~/components/AppShell";
 import { db } from "~/db/index";
 import { setTotpSecret } from "~/db/users";
 import { useI18n } from "~/lib/i18n";
@@ -51,58 +52,62 @@ export default function Security() {
   const disabling = useSubmission(disable2fa);
 
   return (
-    <main
-      style={{
-        "font-family": "system-ui, sans-serif",
-        "max-width": "40rem",
-        margin: "2rem auto",
-        padding: "0 1rem",
-      }}
-    >
-      <h1>{t("security.title")}</h1>
-      <p>
-        {t("security.status")}:{" "}
-        <b>{status().enabled ? t("security.enabled") : t("security.disabled")}</b>
-      </p>
+    <AppShell>
+      <header class="page-head">
+        <div>
+          <h1>{t("security.title")}</h1>
+          <p class="sub">
+            {t("security.status")}:{" "}
+            <span class={status().enabled ? "chip chip-pos" : "chip chip-pending"}>
+              {status().enabled ? t("security.enabled") : t("security.disabled")}
+            </span>
+          </p>
+        </div>
+      </header>
 
       <Show when={!status().enabled && !enabling.result?.ok}>
-        <form action={generateSecret} method="post">
-          <button type="submit">{t("security.generate")}</button>
-        </form>
-        <Show when={gen.result?.secret}>
-          <div style={{ margin: "1rem 0" }}>
-            <p>
-              {t("security.secret")}: <code>{gen.result?.secret}</code>
-            </p>
-            <p style={{ "font-size": "0.8rem", color: "#777", "word-break": "break-all" }}>
-              {gen.result?.uri}
-            </p>
-            <form action={enable2fa} method="post" style={{ display: "flex", gap: "0.5rem" }}>
-              <input type="hidden" name="secret" value={gen.result?.secret} />
-              <input name="code" inputmode="numeric" placeholder={t("auth.totp")} required />
-              <button type="submit">{t("security.enable")}</button>
-            </form>
-          </div>
-        </Show>
+        <section
+          class="panel panel-pad"
+          style={{ display: "flex", "flex-direction": "column", gap: "16px" }}
+        >
+          <form action={generateSecret} method="post">
+            <button type="submit">{t("security.generate")}</button>
+          </form>
+          <Show when={gen.result?.secret}>
+            <div style={{ display: "flex", "flex-direction": "column", gap: "10px" }}>
+              <p>
+                {t("security.secret")}: <span class="mono">{gen.result?.secret}</span>
+              </p>
+              <p class="mono" style={{ "word-break": "break-all" }}>
+                {gen.result?.uri}
+              </p>
+              <form action={enable2fa} method="post" class="toolbar">
+                <input type="hidden" name="secret" value={gen.result?.secret} />
+                <input name="code" inputmode="numeric" placeholder={t("auth.totp")} required />
+                <button type="submit">{t("security.enable")}</button>
+              </form>
+            </div>
+          </Show>
+        </section>
       </Show>
 
       <Show when={status().enabled}>
-        <form
-          action={disable2fa}
-          method="post"
-          style={{ display: "flex", gap: "0.5rem", margin: "1rem 0" }}
-        >
-          <input name="code" inputmode="numeric" placeholder={t("auth.totp")} required />
-          <button type="submit">{t("security.disable")}</button>
-        </form>
+        <section class="panel panel-pad">
+          <form action={disable2fa} method="post" class="toolbar">
+            <input name="code" inputmode="numeric" placeholder={t("auth.totp")} required />
+            <button type="submit">{t("security.disable")}</button>
+          </form>
+        </section>
       </Show>
 
       <Show when={enabling.result?.ok}>
-        <p style={{ color: "green" }}>{t("security.done")}</p>
+        <p class="alert" style={{ color: "var(--pos)", background: "var(--pos-bg)" }}>
+          {t("security.done")}
+        </p>
       </Show>
       <Show when={enabling.result?.error || disabling.result?.error}>
-        <p style={{ color: "crimson" }}>{t("security.codeError")}</p>
+        <p class="alert alert-error">{t("security.codeError")}</p>
       </Show>
-    </main>
+    </AppShell>
   );
 }
