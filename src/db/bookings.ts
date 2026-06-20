@@ -106,13 +106,13 @@ export function occupancyByMonth(
     }));
 }
 
-/** Rental income (EUR cents): gross of actual bookings, excluding cancellations/reimbursements. */
+/** Rental income (EUR cents): gross of every booking row, including cancellation fees and
+ *  reimbursements (real money in; legacy-sheet parity). Commission still accrues only on bookings. */
 export function rentalIncomeEur(db: Db) {
   return db
     .select()
     .from(schema.bookings)
     .all()
-    .filter((b) => b.type === "booking")
     .reduce((s, b) => s + b.amountEur, 0);
 }
 

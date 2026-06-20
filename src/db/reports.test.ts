@@ -23,6 +23,30 @@ function seeded() {
   return db;
 }
 
+test("annualPnl income includes cancellations & reimbursements; they accrue no commission", () => {
+  const db = makeTestDb();
+  upsertFxRate(db, { date: "2026-06-18", compra: 1000, venta: 1100 });
+  createBooking(db, { guest: "G", date: "2026-06-18", currency: "EUR", amount: 30000 });
+  createBooking(db, {
+    guest: "Cx",
+    date: "2026-06-18",
+    currency: "EUR",
+    amount: 5000,
+    type: "cancellation",
+  });
+  createBooking(db, {
+    guest: "Dx",
+    date: "2026-06-18",
+    currency: "EUR",
+    amount: 7000,
+    type: "reimbursement",
+  });
+  const p = annualPnl(db, "2026");
+  assert.equal(p.income, 42000); // 30000 + 5000 cancellation + 7000 reimbursement
+  assert.equal(p.commission, 3000); // only the booking accrues commission
+  assert.equal(p.netResult, 39000); // 42000 - 3000 - 0
+});
+
 test("annualPnl: income, commission, expenses by group, net (RP-1)", () => {
   const p = annualPnl(seeded(), "2026");
   assert.equal(p.income, 30000);
@@ -42,6 +66,21 @@ test("multiYearBalance: per-year net with running cumulative (RP-2)", () => {
       ["2026", 17000, 35000],
     ],
   );
+});
+
+test("multiYearBalance defaults to the earliest year present (no silent 2023 floor)", () => {
+  const db = makeTestDb();
+  upsertFxRate(db, { date: "2022-12-22", compra: 200, venta: 220 });
+  upsertFxRate(db, { date: "2025-06-18", compra: 1000, venta: 1100 });
+  createBooking(db, { guest: "Early", date: "2022-12-22", currency: "EUR", amount: 40000 });
+  createBooking(db, { guest: "H", date: "2025-06-18", currency: "EUR", amount: 20000 });
+  const bal = multiYearBalance(db); // no fromYear → must not drop the 2022 booking
+  assert.equal(bal[0].year, "2022");
+  assert.equal(bal[0].income, 40000);
+  assert.equal(
+    bal.reduce((s, b) => s + b.income, 0),
+    60000,
+  ); // both years counted
 });
 
 test("biMonetaryEntries: unified ARS/EUR/FX rows newest-first (RP-3)", () => {
