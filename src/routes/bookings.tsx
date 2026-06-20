@@ -31,11 +31,13 @@ const addBooking = action(async (form: FormData) => {
   const amount = Number(form.get("amount"));
   const typeRaw = form.get("type");
   const type = typeRaw === "cancellation" || typeRaw === "reimbursement" ? typeRaw : "booking";
+  const manualRaw = Number(form.get("manualRate"));
+  const manualRate = Number.isFinite(manualRaw) && manualRaw > 0 ? manualRaw : undefined;
   if (!guest) return { error: "guest_required" };
   if (!date) return { error: "date_required" };
   if (!Number.isFinite(amount) || amount <= 0) return { error: "amount_invalid" };
   try {
-    createBooking(db, { guest, date, currency, amount: toCents(amount), type });
+    createBooking(db, { guest, date, currency, amount: toCents(amount), type, manualRate });
   } catch (e) {
     return { error: (e as Error).message };
   }
@@ -118,6 +120,15 @@ export default function Bookings() {
           <option value="cancellation">{t("bookings.type_cancellation")}</option>
           <option value="reimbursement">{t("bookings.type_reimbursement")}</option>
         </select>
+        <input
+          type="number"
+          name="manualRate"
+          step="0.01"
+          min="0"
+          placeholder={t("common.manualRate")}
+          title={t("common.manualRate")}
+          size="8"
+        />
         <button type="submit">{t("common.save")}</button>
       </form>
 

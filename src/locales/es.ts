@@ -15,6 +15,7 @@ export const es = {
     rate: "Cambio",
     rateDate: "Fecha de cambio",
     save: "Guardar",
+    manualRate: "Cambio manual",
   },
   fx: {
     noRate: "Sin cambio BNA para esta fecha — se requerirá un cambio manual.",

@@ -71,6 +71,21 @@ test("createBooking throws when no FX rate exists on/before the date", () => {
   );
 });
 
+test("createBooking accepts a manual FX rate when none exists, flagged overridden (FX-7)", () => {
+  const db = dbWithRates();
+  const b = createBooking(db, {
+    guest: "Manual",
+    date: "2026-01-01", // no BNA quote on/before this
+    currency: "EUR",
+    amount: 10000,
+    manualRate: 1500,
+  });
+  assert.equal(b.fxRate, 1500);
+  assert.equal(b.fxRateDate, "2026-01-01");
+  assert.equal(b.amountArs, 15000000); // 100.00 EUR * 1500
+  assert.equal(b.fxOverridden, true);
+});
+
 test("listBookings returns rows newest-first", () => {
   const db = dbWithRates();
   createBooking(db, { guest: "First", date: "2026-06-18", currency: "EUR", amount: 100 });

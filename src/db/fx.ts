@@ -50,3 +50,16 @@ export function snapshotForDate(db: Db, date: string, currency: Currency, amount
   const { amountEur, amountArs } = snapshot(amountCents, currency, rate.average);
   return { fxRate: rate.average, fxRateDate: rate.date, amountEur, amountArs };
 }
+
+/** FX-7: build a snapshot from a user-supplied rate (e.g. weekend/holiday with no BNA quote).
+ *  Same shape as snapshotForDate; rate-date is the entry date. Caller flags the row as overridden. */
+export function manualSnapshot(
+  date: string,
+  currency: Currency,
+  amountCents: number,
+  rate: number,
+) {
+  if (!(rate > 0)) throw new Error("manual rate must be positive");
+  const { amountEur, amountArs } = snapshot(amountCents, currency, rate);
+  return { fxRate: rate, fxRateDate: date, amountEur, amountArs };
+}

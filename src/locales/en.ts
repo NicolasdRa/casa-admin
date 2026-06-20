@@ -15,6 +15,7 @@ export const en = {
     rate: "FX rate",
     rateDate: "Rate date",
     save: "Save",
+    manualRate: "Manual rate",
   },
   fx: {
     noRate: "No BNA rate for this date — a manual rate will be required.",

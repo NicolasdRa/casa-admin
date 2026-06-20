@@ -1,7 +1,7 @@
 import { desc, eq } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { splitByShare } from "../lib/split.ts";
-import { snapshotForDate } from "./fx.ts";
+import { manualSnapshot, snapshotForDate } from "./fx.ts";
 import { listPartners } from "./partners.ts";
 import * as schema from "./schema.ts";
 
@@ -15,6 +15,7 @@ export interface NewExpense {
   categoryId?: number;
   supplierId?: number;
   receiptUrl?: string; // EX-6: stored receipt filename, served via /api/receipt
+  manualRate?: number; // FX-7: override the BNA rate (flagged)
 }
 
 /** Lowercased file extension restricted to [a-z0-9] (max 5). "" if none — guards against odd names. */
@@ -30,7 +31,10 @@ export function receiptPlan(mimeType: string): "webp" | "passthrough" {
 
 /** Record an expense, snapshotting the FX rate + both currencies immutably onto the row. */
 export function createExpense(db: Db, input: NewExpense) {
-  const fx = snapshotForDate(db, input.date, input.currency, input.amount);
+  const fx =
+    input.manualRate != null
+      ? manualSnapshot(input.date, input.currency, input.amount, input.manualRate)
+      : snapshotForDate(db, input.date, input.currency, input.amount);
   const [row] = db
     .insert(schema.expenses)
     .values({
@@ -43,7 +47,7 @@ export function createExpense(db: Db, input: NewExpense) {
       receiptUrl: input.receiptUrl ?? null,
       fxRate: fx.fxRate,
       fxRateDate: fx.fxRateDate,
-      fxOverridden: false,
+      fxOverridden: input.manualRate != null,
       amountEur: fx.amountEur,
       amountArs: fx.amountArs,
     })

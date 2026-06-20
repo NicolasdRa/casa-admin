@@ -45,6 +45,8 @@ const addExpense = action(async (form: FormData) => {
   const categoryId = categoryRaw ? Number(categoryRaw) : undefined;
   const supplierRaw = form.get("supplierId");
   const supplierId = supplierRaw ? Number(supplierRaw) : undefined;
+  const manualRaw = Number(form.get("manualRate"));
+  const manualRate = Number.isFinite(manualRaw) && manualRaw > 0 ? manualRaw : undefined;
   if (!date) return { error: "date_required" };
   if (!Number.isFinite(amount) || amount <= 0) return { error: "amount_invalid" };
   try {
@@ -55,6 +57,7 @@ const addExpense = action(async (form: FormData) => {
       detail,
       categoryId,
       supplierId,
+      manualRate,
     });
     // EX-6: store the receipt under a server-controlled filename (no user-controlled path).
     const receipt = form.get("receipt");
@@ -162,6 +165,15 @@ export default function Expenses() {
           <For each={suppliers()}>{(s) => <option value={s.id}>{s.name}</option>}</For>
         </select>
         <input name="detail" placeholder={t("expenses.detail")} />
+        <input
+          type="number"
+          name="manualRate"
+          step="0.01"
+          min="0"
+          placeholder={t("common.manualRate")}
+          title={t("common.manualRate")}
+          size="8"
+        />
         <input
           type="file"
           name="receipt"

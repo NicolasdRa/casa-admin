@@ -1,7 +1,7 @@
 import { and, desc, gte, like, lte } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { commissionEur } from "../lib/fx.ts";
-import { snapshotForDate } from "./fx.ts";
+import { manualSnapshot, snapshotForDate } from "./fx.ts";
 import * as schema from "./schema.ts";
 import { getSettings } from "./settings.ts";
 
@@ -14,6 +14,7 @@ export interface NewBooking {
   amount: number; // cents in `currency`
   commissionRate?: number; // BK-7: defaults to the configured Settings rate; snapshotted per booking
   type?: "booking" | "cancellation" | "reimbursement";
+  manualRate?: number; // FX-7: override the BNA rate (flagged); e.g. no quote for the date
 }
 
 /**
@@ -24,7 +25,10 @@ export interface NewBooking {
  * throws if none exists yet (manual override is FX-7).
  */
 export function createBooking(db: Db, input: NewBooking) {
-  const fx = snapshotForDate(db, input.date, input.currency, input.amount);
+  const fx =
+    input.manualRate != null
+      ? manualSnapshot(input.date, input.currency, input.amount, input.manualRate)
+      : snapshotForDate(db, input.date, input.currency, input.amount);
   const type = input.type ?? "booking";
   const commissionRate = input.commissionRate ?? getSettings(db).commissionRate;
   const commission = type === "booking" ? commissionEur(fx.amountEur, commissionRate) : 0;
@@ -38,7 +42,7 @@ export function createBooking(db: Db, input: NewBooking) {
       amount: input.amount,
       fxRate: fx.fxRate,
       fxRateDate: fx.fxRateDate,
-      fxOverridden: false,
+      fxOverridden: input.manualRate != null,
       amountEur: fx.amountEur,
       amountArs: fx.amountArs,
       commissionRate,
