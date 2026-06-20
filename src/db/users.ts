@@ -1,0 +1,36 @@
+import { eq } from "drizzle-orm";
+import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import * as schema from "./schema.ts";
+
+type Db = BetterSQLite3Database<typeof schema>;
+
+export interface NewUser {
+  name: string;
+  email: string;
+  passwordHash: string;
+  role: "superadmin" | "admin" | "user";
+  locale?: "es" | "en";
+}
+
+export function createUser(db: Db, u: NewUser) {
+  const [row] = db
+    .insert(schema.users)
+    .values({ ...u, email: u.email.toLowerCase(), locale: u.locale ?? "es" })
+    .returning()
+    .all();
+  return row;
+}
+
+export function getUserByEmail(db: Db, email: string) {
+  return (
+    db.select().from(schema.users).where(eq(schema.users.email, email.toLowerCase())).get() ?? null
+  );
+}
+
+export function getUserById(db: Db, id: number) {
+  return db.select().from(schema.users).where(eq(schema.users.id, id)).get() ?? null;
+}
+
+export function listUsers(db: Db) {
+  return db.select().from(schema.users).all();
+}
