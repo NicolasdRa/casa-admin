@@ -1,7 +1,7 @@
 import { A, action, createAsync, query, useSubmission } from "@solidjs/router";
 import { createSignal, For, Show } from "solid-js";
 import { FxPreview } from "~/components/FxPreview";
-import { createExpense, listCategories, listExpenses } from "~/db/expenses";
+import { createExpense, expenseTotalsByPartner, listCategories, listExpenses } from "~/db/expenses";
 import { db } from "~/db/index";
 import { listSuppliers } from "~/db/suppliers";
 import { useI18n } from "~/lib/i18n";
@@ -21,6 +21,11 @@ const listSuppliersQuery = query(async () => {
   "use server";
   return listSuppliers(db);
 }, "suppliers");
+
+const partnerTotalsQuery = query(async () => {
+  "use server";
+  return expenseTotalsByPartner(db);
+}, "expensePartnerTotals");
 
 const addExpense = action(async (form: FormData) => {
   "use server";
@@ -47,6 +52,7 @@ export const route = {
     listExpensesQuery();
     listCategoriesQuery();
     listSuppliersQuery();
+    partnerTotalsQuery();
   },
 };
 
@@ -55,6 +61,7 @@ export default function Expenses() {
   const expenses = createAsync(() => listExpensesQuery(), { initialValue: [] });
   const categories = createAsync(() => listCategoriesQuery(), { initialValue: [] });
   const suppliers = createAsync(() => listSuppliersQuery(), { initialValue: [] });
+  const partnerTotals = createAsync(() => partnerTotalsQuery(), { initialValue: [] });
   const [date, setDate] = createSignal("");
   const [amount, setAmount] = createSignal(0);
   const [currency, setCurrency] = createSignal<"ARS" | "EUR">("EUR");
@@ -160,6 +167,22 @@ export default function Expenses() {
           </For>
         </tbody>
       </table>
+
+      <Show when={partnerTotals().length > 0}>
+        <h2 style={{ "margin-top": "2rem", "font-size": "1.1rem" }}>{t("expenses.byPartner")}</h2>
+        <table style={{ "border-collapse": "collapse", width: "100%" }}>
+          <tbody>
+            <For each={partnerTotals()}>
+              {(p) => (
+                <tr>
+                  <td style={cell}>{p.name}</td>
+                  <td style={cell}>{money(p.totalEur)} EUR</td>
+                </tr>
+              )}
+            </For>
+          </tbody>
+        </table>
+      </Show>
     </main>
   );
 }

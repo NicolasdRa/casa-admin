@@ -42,6 +42,7 @@ export const en = {
     category: "Category",
     supplier: "Supplier",
     empty: "No expenses yet.",
+    byPartner: "By partner",
   },
   suppliers: {
     title: "Suppliers",

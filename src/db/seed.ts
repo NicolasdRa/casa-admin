@@ -3,6 +3,7 @@
 import { hashPassword } from "../lib/password.ts";
 import { upsertFxRate } from "./fx.ts";
 import { db } from "./index.ts";
+import { createPartner, listPartners } from "./partners.ts";
 import { categories } from "./schema.ts";
 import { createUser, listUsers } from "./users.ts";
 
@@ -27,6 +28,13 @@ const defaultCategories = [
 if (db.select().from(categories).all().length === 0) {
   db.insert(categories).values(defaultCategories).run();
   console.log(`seeded ${defaultCategories.length} categories`);
+}
+
+// Owner partners between whom expenses/results split (default 50/50). Idempotent.
+if (listPartners(db).length === 0) {
+  createPartner(db, { name: "Nicolás", defaultShare: 0.5 });
+  createPartner(db, { name: "Anastasia", defaultShare: 0.5 });
+  console.log("seeded 2 partners (50/50)");
 }
 
 // PRD §3 role accounts. Placeholder emails for Anastasia/co-host — change them, and the temp

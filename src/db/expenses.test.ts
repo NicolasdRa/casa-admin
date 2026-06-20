@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createExpense, listExpenses } from "./expenses.ts";
+import { createExpense, expenseTotalsByPartner, listExpenses } from "./expenses.ts";
 import { upsertFxRate } from "./fx.ts";
+import { createPartner } from "./partners.ts";
 import { makeTestDb } from "./testdb.ts";
 
 function dbWithRates() {
@@ -39,4 +40,40 @@ test("listExpenses returns rows newest-first", () => {
   const all = listExpenses(db);
   assert.equal(all.length, 2);
   assert.equal(all[0].detail, "B");
+});
+
+function dbWithRatesAndPartners() {
+  const db = dbWithRates();
+  createPartner(db, { name: "Nicolás", defaultShare: 0.5 });
+  createPartner(db, { name: "Anastasia", defaultShare: 0.5 });
+  return db;
+}
+
+test("createExpense splits the EUR total across partners (sums exactly)", () => {
+  const db = dbWithRatesAndPartners();
+  const e = createExpense(db, { date: "2026-06-18", currency: "EUR", amount: 10001 }); // 100.01 EUR
+  const totals = expenseTotalsByPartner(db);
+  assert.equal(totals.length, 2);
+  assert.equal(
+    totals.reduce((s, t) => s + t.totalEur, 0),
+    e.amountEur, // 10001 — odd cent not lost
+  );
+});
+
+test("createExpense without partners records no splits (graceful)", () => {
+  const db = dbWithRates(); // no partners
+  createExpense(db, { date: "2026-06-18", currency: "EUR", amount: 5000 });
+  assert.equal(expenseTotalsByPartner(db).length, 0);
+});
+
+test("expenseTotalsByPartner aggregates across expenses", () => {
+  const db = dbWithRatesAndPartners();
+  createExpense(db, { date: "2026-06-18", currency: "EUR", amount: 10000 });
+  createExpense(db, { date: "2026-06-18", currency: "EUR", amount: 20000 });
+  const totals = expenseTotalsByPartner(db);
+  // 50/50 of 300.00 EUR -> 150.00 each
+  assert.deepEqual(
+    totals.map((t) => t.totalEur).sort((a, b) => a - b),
+    [15000, 15000],
+  );
 });

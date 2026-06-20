@@ -1,6 +1,8 @@
 import { desc } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import { splitByShare } from "../lib/split.ts";
 import { snapshotForDate } from "./fx.ts";
+import { listPartners } from "./partners.ts";
 import * as schema from "./schema.ts";
 
 type Db = BetterSQLite3Database<typeof schema>;
@@ -34,6 +36,22 @@ export function createExpense(db: Db, input: NewExpense) {
     })
     .returning()
     .all();
+
+  // EX-3: split the EUR total across partners by their default share (largest-remainder, no lost cents).
+  // Only when partners exist and their shares sum to ~1; otherwise skip rather than persist an unbalanced split.
+  const partners = listPartners(db);
+  const shareSum = partners.reduce((s, p) => s + p.defaultShare, 0);
+  if (partners.length > 0 && Math.abs(shareSum - 1) < 1e-9) {
+    const splits = splitByShare(
+      row.amountEur,
+      partners.map((p) => ({ partnerId: p.id, share: p.defaultShare })),
+    );
+    db.insert(schema.expenseSplits)
+      .values(
+        splits.map((s) => ({ expenseId: row.id, partnerId: s.partnerId, amountEur: s.amountEur })),
+      )
+      .run();
+  }
   return row;
 }
 
@@ -43,4 +61,16 @@ export function listExpenses(db: Db) {
 
 export function listCategories(db: Db) {
   return db.select().from(schema.categories).orderBy(schema.categories.name).all();
+}
+
+/** Aggregate each partner's total expense share (EUR cents) across all splits. */
+export function expenseTotalsByPartner(db: Db) {
+  const partners = listPartners(db);
+  // ponytail: JS aggregation over a tiny split table; move to a SQL GROUP BY if it ever grows.
+  const splits = db.select().from(schema.expenseSplits).all();
+  return partners.map((p) => ({
+    partnerId: p.id,
+    name: p.name,
+    totalEur: splits.filter((s) => s.partnerId === p.id).reduce((a, s) => a + s.amountEur, 0),
+  }));
 }
