@@ -20,6 +20,7 @@ export const en = {
   },
   fx: {
     noRate: "No BNA rate for this date — a manual rate will be required.",
+    willFetch: "BNA rate will be retrieved automatically on save.",
     trend: "BNA EUR trend",
   },
   auth: {

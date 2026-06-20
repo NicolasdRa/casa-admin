@@ -20,6 +20,7 @@ export const es = {
   },
   fx: {
     noRate: "Sin cambio BNA para esta fecha — se requerirá un cambio manual.",
+    willFetch: "El cambio BNA se obtendrá automáticamente al guardar.",
     trend: "Tendencia BNA EUR",
   },
   auth: {

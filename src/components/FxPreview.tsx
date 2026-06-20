@@ -18,7 +18,14 @@ const rateForDate = query(async (date: string) => {
  * amount, live, before the user saves. The rate comes from the server (by date); the conversion
  * is the same pure `snapshot()` used at save time, so the preview matches what gets stored.
  */
-export function FxPreview(props: { date: string; amount: number; currency: "ARS" | "EUR" }) {
+export function FxPreview(props: {
+  date: string;
+  amount: number;
+  currency: "ARS" | "EUR";
+  // CA-89: when set, a missing rate is retrieved from BNA on save (the closest historical quote),
+  // so the preview reassures instead of warning about a manual rate.
+  autoFetch?: boolean;
+}) {
   const { t } = useI18n();
   const rate = createAsync(() => (props.date ? rateForDate(props.date) : Promise.resolve(null)));
   const converted = () => {
@@ -33,9 +40,16 @@ export function FxPreview(props: { date: string; amount: number; currency: "ARS"
       <Show
         when={rate()}
         fallback={
-          <p class="note" style={{ color: "var(--neg)" }}>
-            {t("fx.noRate")}
-          </p>
+          <Show
+            when={props.autoFetch}
+            fallback={
+              <p class="note" style={{ color: "var(--neg)" }}>
+                {t("fx.noRate")}
+              </p>
+            }
+          >
+            <p class="note">{t("fx.willFetch")}</p>
+          </Show>
         }
       >
         {(r) => (

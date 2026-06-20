@@ -2,6 +2,7 @@ import { A, action, createAsync, query, useSubmission } from "@solidjs/router";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import { AppShell } from "~/components/AppShell";
 import { FxPreview } from "~/components/FxPreview";
+import { ensureFxRate } from "~/db/bna";
 import {
   createExpense,
   expenseTotalsByUser,
@@ -69,6 +70,11 @@ const addExpense = action(async (form: FormData) => {
   if (!date) return { error: "date_required" };
   if (!Number.isFinite(amount) || amount <= 0) return { error: "amount_invalid" };
   try {
+    // CA-89: convert pesos on the fly — if no BNA rate is stored for the date, fetch today's
+    // quote from BNA before snapshotting. Backdated dates with no quote fall through to the
+    // "no FX rate" error below (BNA only publishes the current day).
+    const today = new Date().toISOString().slice(0, 10);
+    await ensureFxRate(db, date, today);
     const row = createExpense(db, {
       date,
       currency,
@@ -233,7 +239,7 @@ export default function Expenses() {
         <button type="submit">{t("common.save")}</button>
       </form>
 
-      <FxPreview date={date()} amount={amount()} currency={currency()} />
+      <FxPreview date={date()} amount={amount()} currency={currency()} autoFetch />
 
       <Show when={submission.result?.error}>
         {(err) => <p class="alert alert-error">{err()}</p>}
