@@ -1,5 +1,6 @@
 import { createAsync, query, redirect } from "@solidjs/router";
 import { For } from "solid-js";
+import { AppShell } from "~/components/AppShell";
 import { listAuditLog } from "~/db/audit";
 import { db } from "~/db/index";
 import { listUsers } from "~/db/users";
@@ -23,49 +24,49 @@ const auditQuery = query(async () => {
 export default function Audit() {
   const { t } = useI18n();
   const log = createAsync(() => auditQuery(), { initialValue: [] });
-  const cell = { padding: "0.4rem 0.6rem", "border-bottom": "1px solid #eee" } as const;
 
   return (
-    <main
-      style={{
-        "font-family": "system-ui, sans-serif",
-        "max-width": "55rem",
-        margin: "2rem auto",
-        padding: "0 1rem",
-      }}
-    >
-      <h1>{t("audit.title")}</h1>
-      <table style={{ "border-collapse": "collapse", width: "100%" }}>
-        <thead>
-          <tr>
-            <th style={cell}>{t("audit.when")}</th>
-            <th style={cell}>{t("audit.user")}</th>
-            <th style={cell}>{t("audit.action")}</th>
-            <th style={cell}>{t("audit.entity")}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <For
-            each={log()}
-            fallback={
-              <tr>
-                <td colspan="4" style={cell}>
-                  {t("audit.empty")}
-                </td>
-              </tr>
-            }
-          >
-            {(e) => (
-              <tr>
-                <td style={cell}>{e.when}</td>
-                <td style={cell}>{e.who}</td>
-                <td style={cell}>{e.action}</td>
-                <td style={cell}>{e.entity}</td>
-              </tr>
-            )}
-          </For>
-        </tbody>
-      </table>
-    </main>
+    <AppShell>
+      <header class="page-head">
+        <div>
+          <h1>{t("audit.title")}</h1>
+        </div>
+      </header>
+      <div class="panel table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>{t("audit.when")}</th>
+              <th>{t("audit.user")}</th>
+              <th>{t("audit.action")}</th>
+              <th>{t("audit.entity")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <For
+              each={log()}
+              fallback={
+                <tr>
+                  <td colspan="4" class="note">
+                    {t("audit.empty")}
+                  </td>
+                </tr>
+              }
+            >
+              {(e) => (
+                <tr>
+                  <td class="mono">{e.when}</td>
+                  <td>{e.who}</td>
+                  <td>
+                    <span class="chip chip-pending">{e.action}</span>
+                  </td>
+                  <td class="mono">{e.entity}</td>
+                </tr>
+              )}
+            </For>
+          </tbody>
+        </table>
+      </div>
+    </AppShell>
   );
 }

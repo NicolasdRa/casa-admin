@@ -32,10 +32,14 @@ export function FxPreview(props: { date: string; amount: number; currency: "ARS"
     <Show when={props.date && rate() !== undefined}>
       <Show
         when={rate()}
-        fallback={<p style={{ color: "crimson", margin: "0.25rem 0" }}>{t("fx.noRate")}</p>}
+        fallback={
+          <p class="note" style={{ color: "var(--neg)" }}>
+            {t("fx.noRate")}
+          </p>
+        }
       >
         {(r) => (
-          <p style={{ color: "#555", margin: "0.25rem 0" }}>
+          <p class="note">
             {t("common.rate")}: {r().average} ({r().date})
             <Show when={converted()}>
               {(c) => (

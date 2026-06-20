@@ -1,5 +1,6 @@
 import { action, createAsync, query, redirect, useSubmission } from "@solidjs/router";
 import { Show } from "solid-js";
+import { AppShell } from "~/components/AppShell";
 import { db } from "~/db/index";
 import { getSettings, type SettingsPatch, updateSettings } from "~/db/settings";
 import { useI18n } from "~/lib/i18n";
@@ -39,28 +40,19 @@ export default function Settings() {
   const { t } = useI18n();
   const s = createAsync(() => settingsQuery());
   const saving = useSubmission(saveSettings);
-  const row = {
-    display: "flex",
-    gap: "0.5rem",
-    "align-items": "center",
-    margin: "0.5rem 0",
-  } as const;
 
   return (
-    <main
-      style={{
-        "font-family": "system-ui, sans-serif",
-        "max-width": "32rem",
-        margin: "2rem auto",
-        padding: "0 1rem",
-      }}
-    >
-      <h1>{t("settings.title")}</h1>
+    <AppShell>
+      <header class="page-head">
+        <div>
+          <h1>{t("settings.title")}</h1>
+        </div>
+      </header>
       <Show when={s()}>
         {(cfg) => (
-          <form action={saveSettings} method="post">
-            <label style={row}>
-              <span style={{ width: "12rem" }}>{t("settings.commission")}</span>
+          <form action={saveSettings} method="post" class="panel panel-pad">
+            <label class="field">
+              <span>{t("settings.commission")}</span>
               <input
                 type="number"
                 name="commissionPct"
@@ -70,12 +62,12 @@ export default function Settings() {
                 value={(cfg().commissionRate * 100).toString()}
               />
             </label>
-            <label style={row}>
-              <span style={{ width: "12rem" }}>{t("settings.fxSource")}</span>
+            <label class="field">
+              <span>{t("settings.fxSource")}</span>
               <input name="fxSource" value={cfg().fxSource} />
             </label>
-            <label style={row}>
-              <span style={{ width: "12rem" }}>{t("settings.locale")}</span>
+            <label class="field">
+              <span>{t("settings.locale")}</span>
               <select name="defaultLocale">
                 <option value="es" selected={cfg().defaultLocale === "es"}>
                   ES
@@ -85,17 +77,26 @@ export default function Settings() {
                 </option>
               </select>
             </label>
-            <label style={row}>
-              <span style={{ width: "12rem" }}>{t("settings.backup")}</span>
+            <label class="field">
+              <span>{t("settings.backup")}</span>
               <input name="backupCadence" value={cfg().backupCadence} />
             </label>
-            <button type="submit">{t("common.save")}</button>
-            <Show when={saving.result?.ok}>
-              <span style={{ color: "green", "margin-left": "0.5rem" }}>{t("settings.saved")}</span>
-            </Show>
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                "align-items": "center",
+                "margin-top": "16px",
+              }}
+            >
+              <button type="submit">{t("common.save")}</button>
+              <Show when={saving.result?.ok}>
+                <span class="saved">{t("settings.saved")}</span>
+              </Show>
+            </div>
           </form>
         )}
       </Show>
-    </main>
+    </AppShell>
   );
 }

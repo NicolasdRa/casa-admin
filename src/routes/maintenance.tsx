@@ -99,14 +99,12 @@ export default function Maintenance() {
         <button type="submit">{t("common.save")}</button>
       </form>
       <Show when={adding.result?.error}>
-        <p style={{ color: "crimson" }}>{t("maintenance.invalid")}</p>
+        <p class="alert alert-error">{t("maintenance.invalid")}</p>
       </Show>
 
       {/* Filters (GET, URL-driven) */}
-      <form
-        method="get"
-        style={{ display: "flex", gap: "0.5rem", margin: "1rem 0", color: "#555" }}
-      >
+      <form method="get" class="toolbar filter">
+        <span class="toolbar-label">{t("bookings.filter")}</span>
         <select name="season">
           <option value="">{t("maintenance.season")}</option>
           <For each={seasons()}>
@@ -126,61 +124,70 @@ export default function Maintenance() {
             {t("maintenance.done")}
           </option>
         </select>
-        <button type="submit">{t("bookings.filter")}</button>
+        <button type="submit" class="btn-ghost">
+          {t("bookings.filter")}
+        </button>
       </form>
 
-      <table style={{ "border-collapse": "collapse", width: "100%" }}>
-        <thead>
-          <tr>
-            <th style={cell}>{t("common.date")}</th>
-            <th style={cell}>{t("maintenance.season")}</th>
-            <th style={cell}>{t("maintenance.description")}</th>
-            <th style={cell}>{t("maintenance.status")}</th>
-            <th style={cell} />
-          </tr>
-        </thead>
-        <tbody>
-          <For
-            each={tasks()}
-            fallback={
-              <tr>
-                <td colspan="5" style={cell}>
-                  {t("maintenance.empty")}
-                </td>
-              </tr>
-            }
-          >
-            {(task) => (
-              <tr>
-                <td style={cell}>{task.date}</td>
-                <td style={cell}>{task.season}</td>
-                <td style={cell}>
-                  {task.description}
-                  <Show when={task.expenseId}> · 💶#{task.expenseId}</Show>
-                </td>
-                <td style={cell}>
-                  {task.status === "done" ? t("maintenance.done") : t("maintenance.pending")}
-                </td>
-                <td style={cell}>
-                  <form action={toggleTask} method="post">
-                    <input type="hidden" name="id" value={task.id} />
-                    <input
-                      type="hidden"
-                      name="status"
-                      value={task.status === "done" ? "pending" : "done"}
-                    />
-                    <button type="submit">
-                      {task.status === "done"
-                        ? t("maintenance.markPending")
-                        : t("maintenance.markDone")}
-                    </button>
-                  </form>
-                </td>
-              </tr>
-            )}
-          </For>
-        </tbody>
-      </table>
-    </main>
+      <div class="panel table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>{t("common.date")}</th>
+              <th>{t("maintenance.season")}</th>
+              <th>{t("maintenance.description")}</th>
+              <th>{t("maintenance.status")}</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            <For
+              each={tasks()}
+              fallback={
+                <tr>
+                  <td colspan="5" class="note">
+                    {t("maintenance.empty")}
+                  </td>
+                </tr>
+              }
+            >
+              {(task) => (
+                <tr>
+                  <td>{task.date}</td>
+                  <td>{task.season}</td>
+                  <td>
+                    {task.description}
+                    <Show when={task.expenseId}>
+                      {" "}
+                      · <a href="/expenses">#{task.expenseId}</a>
+                    </Show>
+                  </td>
+                  <td>
+                    <span class={task.status === "done" ? "chip chip-pos" : "chip chip-pending"}>
+                      {task.status === "done" ? t("maintenance.done") : t("maintenance.pending")}
+                    </span>
+                  </td>
+                  <td class="num">
+                    <form action={toggleTask} method="post">
+                      <input type="hidden" name="id" value={task.id} />
+                      <input
+                        type="hidden"
+                        name="status"
+                        value={task.status === "done" ? "pending" : "done"}
+                      />
+                      <button type="submit">
+                        {task.status === "done"
+                          ? t("maintenance.markPending")
+                          : t("maintenance.markDone")}
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              )}
+            </For>
+          </tbody>
+        </table>
+      </div>
+    </AppShell>
   );
 }

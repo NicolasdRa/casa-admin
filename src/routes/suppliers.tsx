@@ -1,5 +1,6 @@
 import { action, createAsync, query, useSubmission } from "@solidjs/router";
 import { For, Show } from "solid-js";
+import { AppShell } from "~/components/AppShell";
 import { db } from "~/db/index";
 import { createSupplier, listSuppliers } from "~/db/suppliers";
 import { useI18n } from "~/lib/i18n";
@@ -32,34 +33,42 @@ export default function Suppliers() {
   const submission = useSubmission(addSupplier);
 
   return (
-    <main
-      style={{
-        "font-family": "system-ui, sans-serif",
-        "max-width": "40rem",
-        margin: "2rem auto",
-        padding: "0 1rem",
-      }}
-    >
-      <h1>{t("suppliers.title")}</h1>
+    <AppShell>
+      <header class="page-head">
+        <div>
+          <h1>{t("suppliers.title")}</h1>
+        </div>
+      </header>
 
-      <form
-        action={addSupplier}
-        method="post"
-        style={{ display: "flex", gap: "0.5rem", margin: "1rem 0" }}
-      >
+      <form action={addSupplier} method="post" class="toolbar">
         <input name="name" placeholder={t("suppliers.name")} required />
         <button type="submit">{t("common.save")}</button>
       </form>
 
       <Show when={submission.result?.error}>
-        {(err) => <p style={{ color: "crimson" }}>{err()}</p>}
+        {(err) => <p class="alert alert-error">{err()}</p>}
       </Show>
 
-      <ul>
-        <For each={suppliers()} fallback={<li>{t("suppliers.empty")}</li>}>
-          {(s) => <li>{s.name}</li>}
-        </For>
-      </ul>
-    </main>
+      <div class="panel">
+        <table>
+          <tbody>
+            <For
+              each={suppliers()}
+              fallback={
+                <tr>
+                  <td class="note">{t("suppliers.empty")}</td>
+                </tr>
+              }
+            >
+              {(s) => (
+                <tr>
+                  <td>{s.name}</td>
+                </tr>
+              )}
+            </For>
+          </tbody>
+        </table>
+      </div>
+    </AppShell>
   );
 }

@@ -21,23 +21,37 @@ export function FxTrend() {
 
   return (
     <Show when={rates().length > 1}>
-      <div style={{ color: "#555", "font-size": "0.85rem", margin: "0.5rem 0" }}>
-        {t("fx.trend")}:{" "}
+      <div
+        style={{
+          display: "flex",
+          "align-items": "center",
+          gap: "10px",
+          color: "var(--muted)",
+          "font-size": "0.875rem",
+        }}
+      >
+        <span class="toolbar-label" style={{ margin: 0 }}>
+          {t("fx.trend")}
+        </span>
         <svg
           width={w}
           height={h}
           role="img"
           aria-label={t("fx.trend")}
-          style={{ "vertical-align": "middle" }}
+          style={{ "vertical-align": "middle", color: "var(--pos)" }}
         >
           <polyline
             points={sparkline(rates(), w, h)}
             fill="none"
-            stroke="#3a7"
+            stroke="currentColor"
             stroke-width="1.5"
+            stroke-linejoin="round"
+            stroke-linecap="round"
           />
-        </svg>{" "}
-        <span>{rates()[rates().length - 1]}</span>
+        </svg>
+        <b class="num" style={{ color: "var(--ink)" }}>
+          {rates()[rates().length - 1]}
+        </b>
       </div>
     </Show>
   );

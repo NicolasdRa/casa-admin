@@ -45,6 +45,9 @@ export function AppShell(props: { children: JSX.Element }) {
           <A href="/maintenance" activeClass="is-active">
             {t("nav.tasks")}
           </A>
+          <A href="/reports" activeClass="is-active">
+            {t("nav.reports")}
+          </A>
           <Show when={user() && can(user()!.role, "managePartnersCash")}>
             <A href="/caja" activeClass="is-active">
               {t("caja.manage")}
@@ -58,6 +61,12 @@ export function AppShell(props: { children: JSX.Element }) {
           <Show when={user() && can(user()!.role, "manageSettings")}>
             <A href="/settings" activeClass="is-active">
               {t("settings.manage")}
+            </A>
+          </Show>
+          {/* Audit log is admin/superadmin only — matches the route's own guard (role !== "user"). */}
+          <Show when={user() && user()!.role !== "user"}>
+            <A href="/audit" activeClass="is-active">
+              {t("audit.title")}
             </A>
           </Show>
         </nav>

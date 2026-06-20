@@ -1,5 +1,6 @@
 import { action, createAsync, query, redirect, useSubmission } from "@solidjs/router";
 import { For, Show } from "solid-js";
+import { AppShell } from "~/components/AppShell";
 import { db } from "~/db/index";
 import { createUser, getUserById, listUsers, updateUser } from "~/db/users";
 import { useI18n } from "~/lib/i18n";
@@ -68,25 +69,17 @@ export default function Users() {
   const users = createAsync(() => usersQuery(), { initialValue: [] });
   const adding = useSubmission(addUser);
   const editing = useSubmission(editUser);
-  const cell = { padding: "0.4rem 0.6rem", "border-bottom": "1px solid #eee" } as const;
   const roles: Role[] = ["superadmin", "admin", "user"];
 
   return (
-    <main
-      style={{
-        "font-family": "system-ui, sans-serif",
-        "max-width": "55rem",
-        margin: "2rem auto",
-        padding: "0 1rem",
-      }}
-    >
-      <h1>{t("users.title")}</h1>
+    <AppShell>
+      <header class="page-head">
+        <div>
+          <h1>{t("users.title")}</h1>
+        </div>
+      </header>
 
-      <form
-        action={addUser}
-        method="post"
-        style={{ display: "flex", gap: "0.5rem", "flex-wrap": "wrap", margin: "1rem 0" }}
-      >
+      <form action={addUser} method="post" class="toolbar">
         <input name="name" placeholder={t("users.name")} required />
         <input type="email" name="email" placeholder={t("auth.email")} required />
         <input
@@ -106,56 +99,62 @@ export default function Users() {
         <button type="submit">{t("common.save")}</button>
       </form>
       <Show when={adding.result?.error}>
-        <p style={{ color: "crimson" }}>{t("users.addError")}</p>
+        <p class="alert alert-error">{t("users.addError")}</p>
       </Show>
       <Show when={editing.result?.error}>
-        <p style={{ color: "crimson" }}>{t("users.editError")}</p>
+        <p class="alert alert-error">{t("users.editError")}</p>
       </Show>
 
-      <table style={{ "border-collapse": "collapse", width: "100%" }}>
-        <thead>
-          <tr>
-            <th style={cell}>{t("users.name")}</th>
-            <th style={cell}>{t("auth.email")}</th>
-            <th style={cell}>{t("users.role")}</th>
-            <th style={cell}>{t("users.status")}</th>
-            <th style={cell} />
-          </tr>
-        </thead>
-        <tbody>
-          <For each={users()}>
-            {(u) => (
-              <tr>
-                <td style={cell}>{u.name}</td>
-                <td style={cell}>{u.email}</td>
-                <td style={cell} colspan="3">
-                  <form action={editUser} method="post" style={{ display: "flex", gap: "0.5rem" }}>
-                    <input type="hidden" name="id" value={u.id} />
-                    <select name="role">
-                      <For each={roles}>
-                        {(r) => (
-                          <option value={r} selected={r === u.role}>
-                            {t(`users.role_${r}`)}
-                          </option>
-                        )}
-                      </For>
-                    </select>
-                    <select name="status">
-                      <option value="active" selected={u.status === "active"}>
-                        {t("users.active")}
-                      </option>
-                      <option value="disabled" selected={u.status === "disabled"}>
-                        {t("users.disabled")}
-                      </option>
-                    </select>
-                    <button type="submit">{t("common.save")}</button>
-                  </form>
-                </td>
-              </tr>
-            )}
-          </For>
-        </tbody>
-      </table>
-    </main>
+      <div class="panel table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>{t("users.name")}</th>
+              <th>{t("auth.email")}</th>
+              <th>{t("users.role")}</th>
+              <th>{t("users.status")}</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            <For each={users()}>
+              {(u) => (
+                <tr>
+                  <td>{u.name}</td>
+                  <td>{u.email}</td>
+                  <td colspan="3">
+                    <form
+                      action={editUser}
+                      method="post"
+                      style={{ display: "flex", gap: "8px", "flex-wrap": "wrap" }}
+                    >
+                      <input type="hidden" name="id" value={u.id} />
+                      <select name="role">
+                        <For each={roles}>
+                          {(r) => (
+                            <option value={r} selected={r === u.role}>
+                              {t(`users.role_${r}`)}
+                            </option>
+                          )}
+                        </For>
+                      </select>
+                      <select name="status">
+                        <option value="active" selected={u.status === "active"}>
+                          {t("users.active")}
+                        </option>
+                        <option value="disabled" selected={u.status === "disabled"}>
+                          {t("users.disabled")}
+                        </option>
+                      </select>
+                      <button type="submit">{t("common.save")}</button>
+                    </form>
+                  </td>
+                </tr>
+              )}
+            </For>
+          </tbody>
+        </table>
+      </div>
+    </AppShell>
   );
 }

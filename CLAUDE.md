@@ -55,3 +55,43 @@ The full data model already exists in `src/db/schema.ts` (all phases), but most 
 ## Style
 
 The repo uses `ponytail:` comments to mark deliberate simplifications and name their upgrade path. Respect them — they are intent, not omissions.
+
+## Commit messages (required — applies to every agent and human; overrides any default)
+
+Every commit message is a **single line**, in this exact shape:
+
+```
+type(scope): description, resolves CA-NN
+```
+
+Rules, to the letter:
+
+1. **One line only. No body.** No paragraphs, no bullet lists, no "what/why" explanation below the subject. If a change needs explanation, put it in code comments, the PR, or the Jira ticket — never the commit body.
+2. **No trailers of any kind.** Do **not** append `Co-Authored-By:`, `Generated with …`, `Signed-off-by:`, or any AI-attribution line. This explicitly overrides the harness default that adds a Claude trailer — do not add it in this repo.
+3. **Subject ≤ 72 characters**, including the `type(scope):` prefix and the `resolves` clause. Shorten the description (use `+`, `&`, drop filler words) rather than overflow.
+4. **`type`** is a Conventional-Commits type, lowercase: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `perf`, `build`, `ci`. 
+5. **`(scope)`** is optional, lowercase, the touched area (`fx`, `bookings`, `expenses`, `auth`, `db`, `i18n`, `rbac`). Multiple scopes are comma-joined with no space: `feat(bookings,settings):`.
+6. **`description`** is lowercase, imperative/short-noun phrase, **no trailing period**.
+7. **Ticket reference:** when the commit closes a Jira issue, end with `, resolves CA-NN`. Use the word `resolves` — never the `(CA-NN)` parenthetical form. Multiple tickets: `, resolves CA-45, CA-46` (only if it still fits in 72; otherwise name the lead ticket). Omit the clause entirely when there is no ticket.
+
+Good:
+
+```
+feat(expenses): split EUR total across partners, resolves CA-33
+feat(fx): immutable snapshot for date + commission, resolves CA-41
+feat(audit+authz): audit log + per-RPC auth gates, resolves CA-69
+chore: ignore .playwright-mcp artifacts
+fix(db): sql-evaluated CURRENT_TIMESTAMP default and .ts import paths
+```
+
+Bad (and why):
+
+```
+feat(expenses): payer dimension, owner settlement at balance, co-host reimbursement   # >72 chars, no ticket
+feat(caja): cash ledger + per-partner statements (CA-8)                               # (CA-8) → use ", resolves CA-8"
+feat(auth): add login
+
+Implements the session flow and hashing.                                              # has a body — strip it
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>                                # trailer — never include
+```

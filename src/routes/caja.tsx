@@ -1,5 +1,6 @@
 import { action, createAsync, query, redirect, useSubmission } from "@solidjs/router";
 import { createMemo, For, Show } from "solid-js";
+import { AppShell } from "~/components/AppShell";
 import { createCashEntry, listCashLedger } from "~/db/cash";
 import { db } from "~/db/index";
 import { listPartners } from "~/db/partners";
@@ -64,25 +65,18 @@ export default function Caja() {
   const statements = createAsync(() => statementsQuery(), { initialValue: [] });
   const adding = useSubmission(addCashEntry);
   const money = (c: number) => fromCents(c).toFixed(2);
-  const cell = { padding: "0.4rem 0.6rem", "border-bottom": "1px solid #eee" } as const;
+  const sign = (c: number) => (c < 0 ? "num neg" : c > 0 ? "num pos" : "num");
   const partnerName = createMemo(() => new Map(partners().map((p) => [p.id, p.name])));
 
   return (
-    <main
-      style={{
-        "font-family": "system-ui, sans-serif",
-        "max-width": "62rem",
-        margin: "2rem auto",
-        padding: "0 1rem",
-      }}
-    >
-      <h1>{t("caja.title")}</h1>
+    <AppShell>
+      <header class="page-head">
+        <div>
+          <h1>{t("caja.title")}</h1>
+        </div>
+      </header>
 
-      <form
-        action={addCashEntry}
-        method="post"
-        style={{ display: "flex", gap: "0.5rem", "flex-wrap": "wrap", margin: "1rem 0" }}
-      >
+      <form action={addCashEntry} method="post" class="toolbar">
         <input type="date" name="date" required />
         <select name="partnerId" required>
           <For each={partners()}>{(p) => <option value={p.id}>{p.name}</option>}</For>
@@ -104,73 +98,85 @@ export default function Caja() {
         <button type="submit">{t("common.save")}</button>
       </form>
       <Show when={adding.result?.error}>
-        <p style={{ color: "crimson" }}>{t("maintenance.invalid")}</p>
+        <p class="alert alert-error">{t("maintenance.invalid")}</p>
       </Show>
 
-      <h2 style={{ "font-size": "1.1rem", "margin-top": "1.5rem" }}>{t("caja.ledger")}</h2>
-      <table style={{ "border-collapse": "collapse", width: "100%" }}>
-        <thead>
-          <tr>
-            <th style={cell}>{t("common.date")}</th>
-            <th style={cell}>{t("caja.partner")}</th>
-            <th style={cell}>{t("caja.concept")}</th>
-            <th style={cell}>EUR</th>
-            <th style={cell}>{t("caja.balance")}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <For
-            each={ledger()}
-            fallback={
+      <section class="panel">
+        <div class="panel-head">
+          <h2>{t("caja.ledger")}</h2>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
               <tr>
-                <td colspan="5" style={cell}>
-                  {t("caja.empty")}
-                </td>
+                <th>{t("common.date")}</th>
+                <th>{t("caja.partner")}</th>
+                <th>{t("caja.concept")}</th>
+                <th class="num">EUR</th>
+                <th class="num">{t("caja.balance")}</th>
               </tr>
-            }
-          >
-            {(e) => (
-              <tr>
-                <td style={cell}>{e.date}</td>
-                <td style={cell}>{partnerName().get(e.partnerId) ?? e.partnerId}</td>
-                <td style={cell}>{e.concept}</td>
-                <td style={cell}>{money(e.amountEur)}</td>
-                <td style={cell}>{money(e.runningBalance)}</td>
-              </tr>
-            )}
-          </For>
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+              <For
+                each={ledger()}
+                fallback={
+                  <tr>
+                    <td colspan="5" class="note">
+                      {t("caja.empty")}
+                    </td>
+                  </tr>
+                }
+              >
+                {(e) => (
+                  <tr>
+                    <td>{e.date}</td>
+                    <td>{partnerName().get(e.partnerId) ?? e.partnerId}</td>
+                    <td>{e.concept}</td>
+                    <td class={sign(e.amountEur)}>{money(e.amountEur)}</td>
+                    <td class={sign(e.runningBalance)}>{money(e.runningBalance)}</td>
+                  </tr>
+                )}
+              </For>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-      <h2 style={{ "font-size": "1.1rem", "margin-top": "1.5rem" }}>{t("caja.statements")}</h2>
-      <table style={{ "border-collapse": "collapse", width: "100%" }}>
-        <thead>
-          <tr>
-            <th style={cell}>{t("caja.partner")}</th>
-            <th style={cell}>{t("caja.income")}</th>
-            <th style={cell}>{t("caja.commission")}</th>
-            <th style={cell}>{t("caja.expenseShare")}</th>
-            <th style={cell}>{t("caja.result")}</th>
-            <th style={cell}>{t("caja.expenseNet")}</th>
-            <th style={cell}>{t("caja.cashAccount")}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <For each={statements()}>
-            {(s) => (
+      <section class="panel">
+        <div class="panel-head">
+          <h2>{t("caja.statements")}</h2>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
               <tr>
-                <td style={cell}>{s.name}</td>
-                <td style={cell}>{money(s.incomeShare)}</td>
-                <td style={cell}>{money(s.commissionShare)}</td>
-                <td style={cell}>{money(s.expenseShare)}</td>
-                <td style={cell}>{money(s.result)}</td>
-                <td style={cell}>{money(s.expenseNet)}</td>
-                <td style={cell}>{money(s.cashAccount)}</td>
+                <th>{t("caja.partner")}</th>
+                <th class="num">{t("caja.income")}</th>
+                <th class="num">{t("caja.commission")}</th>
+                <th class="num">{t("caja.expenseShare")}</th>
+                <th class="num">{t("caja.result")}</th>
+                <th class="num">{t("caja.expenseNet")}</th>
+                <th class="num">{t("caja.cashAccount")}</th>
               </tr>
-            )}
-          </For>
-        </tbody>
-      </table>
-    </main>
+            </thead>
+            <tbody>
+              <For each={statements()}>
+                {(s) => (
+                  <tr>
+                    <td>{s.name}</td>
+                    <td class="num">{money(s.incomeShare)}</td>
+                    <td class="num">{money(s.commissionShare)}</td>
+                    <td class="num">{money(s.expenseShare)}</td>
+                    <td class={sign(s.result)}>{money(s.result)}</td>
+                    <td class="num">{money(s.expenseNet)}</td>
+                    <td class={sign(s.cashAccount)}>{money(s.cashAccount)}</td>
+                  </tr>
+                )}
+              </For>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </AppShell>
   );
 }

@@ -77,6 +77,11 @@ table,
 .mono {
   font-variant-numeric: tabular-nums;
 }
+.mono {
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
 
 h1,
 h2,
@@ -540,6 +545,70 @@ tr.total td {
 /* Wide tables scroll within their panel rather than break the layout */
 .table-scroll {
   overflow-x: auto;
+}
+
+/* Stat strip — at-a-glance figures, divided columns (not a card grid) */
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+}
+.stat {
+  padding: 14px 20px;
+  border-right: 1px solid var(--line);
+  flex: 1 1 auto;
+}
+.stat:last-child {
+  border-right: none;
+}
+.stat .k {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.stat .v {
+  margin-top: 3px;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Income-vs-expense bars */
+.chart-row {
+  display: grid;
+  grid-template-columns: 5rem 1fr;
+  gap: 10px;
+  align-items: center;
+  margin: 3px 0;
+}
+.chart-row .m {
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+.bar {
+  height: 11px;
+  border-radius: var(--radius);
+  min-width: 0;
+}
+.bar + .bar {
+  margin-top: 3px;
+}
+.legend {
+  display: flex;
+  gap: 16px;
+  margin-top: 10px;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+.legend .swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: 5px;
+  vertical-align: baseline;
 }
 
 /* Dashboard quick links */
