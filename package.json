@@ -7,6 +7,7 @@
     "start": "vinxi start",
     "db:push": "drizzle-kit push",
     "db:seed": "node src/db/seed.ts",
+    "fx:fetch": "node src/db/fetchFx.ts",
     "db:studio": "drizzle-kit studio",
     "test": "node --test",
     "lint": "biome check .",

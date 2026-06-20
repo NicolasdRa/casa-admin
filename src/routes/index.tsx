@@ -1,5 +1,6 @@
 import { A, action, createAsync, query, redirect, useSubmission } from "@solidjs/router";
 import { Show } from "solid-js";
+import { FxTrend } from "~/components/FxTrend";
 import { useI18n } from "~/lib/i18n";
 import { can } from "~/lib/permissions";
 import { clearSession, currentUser } from "~/lib/session";
@@ -69,6 +70,7 @@ export default function Dashboard() {
           <A href="/settings">{t("settings.manage")}</A>
         </Show>
       </nav>
+      <FxTrend />
       <p style={{ "margin-top": "2rem", color: "#999" }}>
         Foundation scaffold — schema, FX core and i18n are wired. Modules come next.
       </p>
