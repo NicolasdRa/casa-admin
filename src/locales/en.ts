@@ -16,4 +16,14 @@ export const en = {
     rateDate: "Rate date",
     save: "Save",
   },
+  bookings: {
+    guest: "Guest",
+    commission: "Commission",
+    empty: "No bookings yet.",
+  },
+  expenses: {
+    detail: "Detail",
+    category: "Category",
+    empty: "No expenses yet.",
+  },
 };

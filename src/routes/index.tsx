@@ -1,3 +1,4 @@
+import { A } from "@solidjs/router";
 import { useI18n } from "~/lib/i18n";
 
 export default function Dashboard() {
@@ -24,8 +25,8 @@ export default function Dashboard() {
       </header>
       <nav style={{ display: "flex", gap: "1rem", "margin-top": "1rem" }}>
         <span>{t("nav.dashboard")}</span>
-        <span>{t("nav.bookings")}</span>
-        <span>{t("nav.expenses")}</span>
+        <A href="/bookings">{t("nav.bookings")}</A>
+        <A href="/expenses">{t("nav.expenses")}</A>
         <span>{t("nav.tasks")}</span>
         <span>{t("nav.reports")}</span>
       </nav>

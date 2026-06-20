@@ -16,4 +16,14 @@ export const es = {
     rateDate: "Fecha de cambio",
     save: "Guardar",
   },
+  bookings: {
+    guest: "Huésped",
+    commission: "Comisión",
+    empty: "Sin alquileres todavía.",
+  },
+  expenses: {
+    detail: "Detalle",
+    category: "Categoría",
+    empty: "Sin gastos todavía.",
+  },
 };
