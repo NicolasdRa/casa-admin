@@ -2,6 +2,7 @@
   "name": "casa-bosque",
   "type": "module",
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks || true",
     "dev": "vinxi dev",
     "build": "vinxi build",
     "start": "vinxi start",

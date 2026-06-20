@@ -1,0 +1,45 @@
+#!/bin/sh
+# Enforces CLAUDE.md › Commit messages. Fail-closed for every commit (agents + humans).
+# Activate per clone with:  git config core.hooksPath .githooks  (the `prepare` npm script does this).
+
+msgfile="$1"
+content=$(grep -v '^#' "$msgfile")
+subject=$(printf '%s\n' "$content" | sed -n '1p')
+
+# Let git's own machinery through untouched.
+case "$subject" in
+  "Merge "*|"Revert "*|"fixup!"*|"squash!"*|"amend!"*) exit 0 ;;
+esac
+
+err=0
+
+# 1. Single line only — no body, no trailers (everything after line 1 must be blank).
+rest=$(printf '%s\n' "$content" | sed '1d')
+while IFS= read -r line; do
+  [ -z "$(printf '%s' "$line" | tr -d ' \t')" ] && continue
+  if printf '%s' "$line" | grep -qiE 'co-authored-by:|signed-off-by:|generated with|🤖'; then
+    echo "✗ remove trailer line: $line"
+  else
+    echo "✗ single line only — no body: $line"
+  fi
+  err=1
+done <<EOF
+$rest
+EOF
+
+# 2. Subject length ≤ 72.
+len=$(printf '%s' "$subject" | wc -m | tr -d ' ')
+[ "$len" -gt 72 ] && { echo "✗ subject is $len chars (max 72): $subject"; err=1; }
+
+# 3. Shape: type(scope): description
+printf '%s' "$subject" | grep -qE '^(feat|fix|chore|docs|refactor|test|perf|build|ci)(\([a-z0-9,+.-]+\))?: .+' \
+  || { echo "✗ must match  type(scope): description  (lowercase conventional type)"; err=1; }
+
+# 4. Ticket style: ", resolves CA-N" — never "(CA-N)".
+printf '%s' "$subject" | grep -qE '\(CA-[0-9]+\)' && { echo "✗ use \", resolves CA-N\" not \"(CA-N)\""; err=1; }
+
+# 5. No trailing period.
+case "$subject" in *.) echo "✗ no trailing period in subject"; err=1 ;; esac
+
+[ "$err" -ne 0 ] && { echo "  → see CLAUDE.md › Commit messages"; exit 1; }
+exit 0
