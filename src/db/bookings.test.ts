@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createBooking, listBookings } from "./bookings.ts";
+import { createBooking, listBookings, summarizeBookings } from "./bookings.ts";
 import { upsertFxRate } from "./fx.ts";
 import { makeTestDb } from "./testdb.ts";
 
@@ -71,4 +71,47 @@ test("listBookings returns rows newest-first", () => {
   const all = listBookings(db);
   assert.equal(all.length, 2);
   assert.equal(all[0].guest, "Second");
+});
+
+test("listBookings filters by year", () => {
+  const db = dbWithRates();
+  upsertFxRate(db, { date: "2025-06-18", compra: 900, venta: 1000 });
+  createBooking(db, { guest: "Old", date: "2025-06-18", currency: "EUR", amount: 100 });
+  createBooking(db, { guest: "New", date: "2026-06-18", currency: "EUR", amount: 100 });
+  const r = listBookings(db, { year: "2026" });
+  assert.equal(r.length, 1);
+  assert.equal(r[0].guest, "New");
+});
+
+test("listBookings filters by guest substring and date range", () => {
+  const db = dbWithRates();
+  createBooking(db, { guest: "Bob", date: "2026-06-18", currency: "EUR", amount: 100 });
+  createBooking(db, { guest: "Alice", date: "2026-06-19", currency: "EUR", amount: 100 });
+  assert.equal(listBookings(db, { guest: "ob" })[0].guest, "Bob");
+  assert.equal(listBookings(db, { from: "2026-06-19" }).length, 1);
+  assert.equal(listBookings(db, { to: "2026-06-18" }).length, 1);
+});
+
+test("summarizeBookings groups per-year with grand total", () => {
+  const db = dbWithRates();
+  upsertFxRate(db, { date: "2025-06-18", compra: 900, venta: 1000 });
+  createBooking(db, { guest: "A", date: "2026-06-18", currency: "EUR", amount: 10000 }); // comm 1000
+  createBooking(db, { guest: "B", date: "2026-06-19", currency: "EUR", amount: 20000 }); // comm 2000
+  createBooking(db, { guest: "C", date: "2025-06-18", currency: "EUR", amount: 10000 });
+  const { years, total } = summarizeBookings(listBookings(db));
+  assert.equal(years.length, 2);
+  assert.equal(years[0].year, "2026"); // sorted newest-first
+  const y26 = years.find((y) => y.year === "2026");
+  assert.equal(y26?.count, 2);
+  assert.equal(y26?.incomeEur, 30000);
+  assert.equal(y26?.commissionEur, 3000);
+  assert.equal(total.count, 3);
+  assert.equal(total.incomeEur, 40000);
+});
+
+test("summarizeBookings on empty input", () => {
+  assert.deepEqual(summarizeBookings([]), {
+    years: [],
+    total: { year: "", count: 0, incomeEur: 0, incomeArs: 0, commissionEur: 0 },
+  });
 });

@@ -28,6 +28,15 @@ CREATE TABLE bookings (
   type text DEFAULT 'booking' NOT NULL,
   created_at text DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
+CREATE TABLE users (
+  id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+  name text NOT NULL,
+  email text NOT NULL UNIQUE,
+  password_hash text NOT NULL,
+  role text NOT NULL,
+  locale text DEFAULT 'es' NOT NULL,
+  status text DEFAULT 'active' NOT NULL
+);
 CREATE TABLE suppliers (
   id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
   name text NOT NULL

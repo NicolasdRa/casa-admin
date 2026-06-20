@@ -1,4 +1,4 @@
-import { desc } from "drizzle-orm";
+import { and, desc, gte, like, lte } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { commissionEur } from "../lib/fx.ts";
 import { snapshotForDate } from "./fx.ts";
@@ -45,6 +45,63 @@ export function createBooking(db: Db, input: NewBooking) {
   return row;
 }
 
-export function listBookings(db: Db) {
-  return db.select().from(schema.bookings).orderBy(desc(schema.bookings.date)).all();
+export interface BookingFilter {
+  year?: string; // "YYYY"
+  guest?: string; // substring match
+  from?: string; // ISO date, inclusive
+  to?: string; // ISO date, inclusive
+}
+
+export function listBookings(db: Db, filter: BookingFilter = {}) {
+  const conds = [];
+  if (filter.year) conds.push(like(schema.bookings.date, `${filter.year}-%`));
+  // ponytail: LIKE is case-insensitive for ASCII only; accented names match case-sensitively. Fine for now.
+  if (filter.guest) conds.push(like(schema.bookings.guest, `%${filter.guest}%`));
+  if (filter.from) conds.push(gte(schema.bookings.date, filter.from));
+  if (filter.to) conds.push(lte(schema.bookings.date, filter.to));
+  return db
+    .select()
+    .from(schema.bookings)
+    .where(conds.length ? and(...conds) : undefined)
+    .orderBy(desc(schema.bookings.date))
+    .all();
+}
+
+export interface YearSummary {
+  year: string;
+  count: number;
+  incomeEur: number;
+  incomeArs: number;
+  commissionEur: number;
+}
+
+type SummaryRow = Pick<
+  typeof schema.bookings.$inferSelect,
+  "date" | "amountEur" | "amountArs" | "commissionEur"
+>;
+
+/** Per-year subtotals (newest year first) plus a grand total. All sums are integer cents. */
+export function summarizeBookings(rows: SummaryRow[]) {
+  const byYear = new Map<string, YearSummary>();
+  for (const r of rows) {
+    const year = r.date.slice(0, 4);
+    const s = byYear.get(year) ?? { year, count: 0, incomeEur: 0, incomeArs: 0, commissionEur: 0 };
+    s.count++;
+    s.incomeEur += r.amountEur;
+    s.incomeArs += r.amountArs;
+    s.commissionEur += r.commissionEur;
+    byYear.set(year, s);
+  }
+  const years = [...byYear.values()].sort((a, b) => b.year.localeCompare(a.year));
+  const total = years.reduce<YearSummary>(
+    (t, s) => ({
+      year: "",
+      count: t.count + s.count,
+      incomeEur: t.incomeEur + s.incomeEur,
+      incomeArs: t.incomeArs + s.incomeArs,
+      commissionEur: t.commissionEur + s.commissionEur,
+    }),
+    { year: "", count: 0, incomeEur: 0, incomeArs: 0, commissionEur: 0 },
+  );
+  return { years, total };
 }
