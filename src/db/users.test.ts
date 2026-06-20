@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { makeTestDb } from "./testdb.ts";
-import { createUser, getUserByEmail } from "./users.ts";
+import { createUser, getUserByEmail, updateUser } from "./users.ts";
 
 const sample = {
   name: "Nico",
@@ -30,4 +30,13 @@ test("duplicate email is rejected", () => {
   const db = makeTestDb();
   createUser(db, sample);
   assert.throws(() => createUser(db, { ...sample, name: "Dup" }));
+});
+
+test("updateUser changes role and status", () => {
+  const db = makeTestDb();
+  const u = createUser(db, sample);
+  const upd = updateUser(db, u.id, { role: "user", status: "disabled" });
+  assert.equal(upd.role, "user");
+  assert.equal(upd.status, "disabled");
+  assert.equal(getUserByEmail(db, sample.email)?.status, "disabled");
 });

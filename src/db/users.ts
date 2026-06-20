@@ -34,3 +34,15 @@ export function getUserById(db: Db, id: number) {
 export function listUsers(db: Db) {
   return db.select().from(schema.users).all();
 }
+
+export type UserPatch = Partial<{
+  name: string;
+  role: "superadmin" | "admin" | "user";
+  locale: "es" | "en";
+  status: "active" | "disabled";
+}>;
+
+export function updateUser(db: Db, id: number, patch: UserPatch) {
+  const [row] = db.update(schema.users).set(patch).where(eq(schema.users.id, id)).returning().all();
+  return row;
+}

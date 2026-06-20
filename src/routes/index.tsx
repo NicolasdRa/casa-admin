@@ -1,6 +1,7 @@
 import { A, action, createAsync, query, redirect, useSubmission } from "@solidjs/router";
 import { Show } from "solid-js";
 import { useI18n } from "~/lib/i18n";
+import { can } from "~/lib/permissions";
 import { clearSession, currentUser } from "~/lib/session";
 
 const currentUserQuery = query(async () => {
@@ -61,6 +62,9 @@ export default function Dashboard() {
         <A href="/expenses">{t("nav.expenses")}</A>
         <span>{t("nav.tasks")}</span>
         <span>{t("nav.reports")}</span>
+        <Show when={user() && can(user()!.role, "manageUsers")}>
+          <A href="/users">{t("users.manage")}</A>
+        </Show>
       </nav>
       <p style={{ "margin-top": "2rem", color: "#999" }}>
         Foundation scaffold — schema, FX core and i18n are wired. Modules come next.
