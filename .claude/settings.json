@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /Users/nuuk/Documents/apps/CasaAdmin && OUT=$(pnpm test 2>&1) || { TAIL=$(printf '%s' \"$OUT\" | tail -25); jq -n --arg t \"$TAIL\" '{systemMessage: (\"⚠️ Test suite is RED — run pnpm test:\\n\" + $t), suppressOutput: true}'; }",
+            "timeout": 120,
+            "statusMessage": "Running tests…"
+          }
+        ]
+      }
+    ]
+  }
+}

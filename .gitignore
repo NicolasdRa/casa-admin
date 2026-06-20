@@ -1,0 +1,13 @@
+
+
+#Ignore vscode AI rules
+.github/instructions/codacy.instructions.md
+
+node_modules
+.output
+.vinxi
+dist
+*.db
+*.db-shm
+*.db-wal
+.env
