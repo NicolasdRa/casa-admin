@@ -12,3 +12,4 @@ dist
 *.db-wal
 .env
 .playwright-mcp
+uploads

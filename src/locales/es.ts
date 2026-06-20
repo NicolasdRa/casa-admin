@@ -66,6 +66,7 @@ export const es = {
     supplier: "Proveedor",
     empty: "Sin gastos todavía.",
     byPartner: "Por socio",
+    receipt: "Comprobante",
   },
   suppliers: {
     title: "Proveedores",

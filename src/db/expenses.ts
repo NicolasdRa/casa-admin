@@ -1,4 +1,4 @@
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { splitByShare } from "../lib/split.ts";
 import { snapshotForDate } from "./fx.ts";
@@ -13,7 +13,14 @@ export interface NewExpense {
   amount: number; // cents in `currency`
   detail?: string;
   categoryId?: number;
-  supplierId?: number; // ponytail: free now; managed supplier list is EX-5
+  supplierId?: number;
+  receiptUrl?: string; // EX-6: stored receipt filename, served via /api/receipt
+}
+
+/** Lowercased file extension restricted to [a-z0-9] (max 5). "" if none — guards against odd names. */
+export function safeExt(filename: string): string {
+  const m = /\.([A-Za-z0-9]{1,5})$/.exec(filename);
+  return m ? m[1].toLowerCase() : "";
 }
 
 /** Record an expense, snapshotting the FX rate + both currencies immutably onto the row. */
@@ -28,6 +35,7 @@ export function createExpense(db: Db, input: NewExpense) {
       detail: input.detail ?? null,
       categoryId: input.categoryId ?? null,
       supplierId: input.supplierId ?? null,
+      receiptUrl: input.receiptUrl ?? null,
       fxRate: fx.fxRate,
       fxRateDate: fx.fxRateDate,
       fxOverridden: false,
@@ -57,6 +65,20 @@ export function createExpense(db: Db, input: NewExpense) {
 
 export function listExpenses(db: Db) {
   return db.select().from(schema.expenses).orderBy(desc(schema.expenses.date)).all();
+}
+
+export function getExpenseById(db: Db, id: number) {
+  return db.select().from(schema.expenses).where(eq(schema.expenses.id, id)).get() ?? null;
+}
+
+export function setExpenseReceipt(db: Db, id: number, receiptUrl: string) {
+  const [row] = db
+    .update(schema.expenses)
+    .set({ receiptUrl })
+    .where(eq(schema.expenses.id, id))
+    .returning()
+    .all();
+  return row;
 }
 
 export const CATEGORY_GROUPS = [

@@ -1,7 +1,14 @@
 import { A, action, createAsync, query, useSubmission } from "@solidjs/router";
 import { createSignal, For, Show } from "solid-js";
 import { FxPreview } from "~/components/FxPreview";
-import { createExpense, expenseTotalsByPartner, listCategories, listExpenses } from "~/db/expenses";
+import {
+  createExpense,
+  expenseTotalsByPartner,
+  listCategories,
+  listExpenses,
+  safeExt,
+  setExpenseReceipt,
+} from "~/db/expenses";
 import { db } from "~/db/index";
 import { listSuppliers } from "~/db/suppliers";
 import { useI18n } from "~/lib/i18n";
@@ -40,7 +47,25 @@ const addExpense = action(async (form: FormData) => {
   if (!date) return { error: "date_required" };
   if (!Number.isFinite(amount) || amount <= 0) return { error: "amount_invalid" };
   try {
-    createExpense(db, { date, currency, amount: toCents(amount), detail, categoryId, supplierId });
+    const row = createExpense(db, {
+      date,
+      currency,
+      amount: toCents(amount),
+      detail,
+      categoryId,
+      supplierId,
+    });
+    // EX-6: store the receipt under a server-controlled filename (no user-controlled path).
+    const receipt = form.get("receipt");
+    if (receipt instanceof File && receipt.size > 0) {
+      const { mkdir, writeFile } = await import("node:fs/promises");
+      const dir = process.env.UPLOAD_DIR ?? "uploads";
+      await mkdir(dir, { recursive: true });
+      const ext = safeExt(receipt.name);
+      const fname = `receipt-${row.id}${ext ? `.${ext}` : ""}`;
+      await writeFile(`${dir}/${fname}`, Buffer.from(await receipt.arrayBuffer()));
+      setExpenseReceipt(db, row.id, fname);
+    }
   } catch (e) {
     return { error: (e as Error).message };
   }
@@ -83,6 +108,7 @@ export default function Expenses() {
       <form
         action={addExpense}
         method="post"
+        enctype="multipart/form-data"
         style={{ display: "flex", gap: "0.5rem", "flex-wrap": "wrap", margin: "1rem 0" }}
       >
         <input
@@ -119,6 +145,12 @@ export default function Expenses() {
           <For each={suppliers()}>{(s) => <option value={s.id}>{s.name}</option>}</For>
         </select>
         <input name="detail" placeholder={t("expenses.detail")} />
+        <input
+          type="file"
+          name="receipt"
+          accept="image/*,application/pdf"
+          title={t("expenses.receipt")}
+        />
         <button type="submit">{t("common.save")}</button>
       </form>
 
@@ -142,6 +174,7 @@ export default function Expenses() {
             <th style={cell}>ARS</th>
             <th style={cell}>{t("common.rate")}</th>
             <th style={cell}>{t("common.rateDate")}</th>
+            <th style={cell}>{t("expenses.receipt")}</th>
           </tr>
         </thead>
         <tbody>
@@ -149,7 +182,7 @@ export default function Expenses() {
             each={expenses()}
             fallback={
               <tr>
-                <td colspan="6" style={cell}>
+                <td colspan="7" style={cell}>
                   {t("expenses.empty")}
                 </td>
               </tr>
@@ -163,6 +196,13 @@ export default function Expenses() {
                 <td style={cell}>{money(e.amountArs)}</td>
                 <td style={cell}>{e.fxRate}</td>
                 <td style={cell}>{e.fxRateDate}</td>
+                <td style={cell}>
+                  <Show when={e.receiptUrl}>
+                    <a href={`/api/receipt?id=${e.id}`} target="_blank" rel="noopener">
+                      📎
+                    </a>
+                  </Show>
+                </td>
               </tr>
             )}
           </For>
