@@ -16,10 +16,26 @@ export const en = {
     rateDate: "Rate date",
     save: "Save",
   },
+  fx: {
+    noRate: "No BNA rate for this date — a manual rate will be required.",
+  },
+  auth: {
+    login: "Sign in",
+    logout: "Sign out",
+    email: "Email",
+    password: "Password",
+    invalid: "Invalid credentials.",
+  },
   bookings: {
     guest: "Guest",
     commission: "Commission",
     empty: "No bookings yet.",
+    year: "Year",
+    from: "From",
+    to: "To",
+    filter: "Filter",
+    total: "Total",
+    count: "Count",
   },
   expenses: {
     detail: "Detail",

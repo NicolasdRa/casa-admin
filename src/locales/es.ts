@@ -16,10 +16,26 @@ export const es = {
     rateDate: "Fecha de cambio",
     save: "Guardar",
   },
+  fx: {
+    noRate: "Sin cambio BNA para esta fecha — se requerirá un cambio manual.",
+  },
+  auth: {
+    login: "Iniciar sesión",
+    logout: "Cerrar sesión",
+    email: "Correo",
+    password: "Contraseña",
+    invalid: "Credenciales inválidas.",
+  },
   bookings: {
     guest: "Huésped",
     commission: "Comisión",
     empty: "Sin alquileres todavía.",
+    year: "Año",
+    from: "Desde",
+    to: "Hasta",
+    filter: "Filtrar",
+    total: "Total",
+    count: "Cantidad",
   },
   expenses: {
     detail: "Detalle",

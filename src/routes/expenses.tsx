@@ -1,5 +1,6 @@
 import { A, action, createAsync, query, useSubmission } from "@solidjs/router";
-import { For, Show } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
+import { FxPreview } from "~/components/FxPreview";
 import { createExpense, listCategories, listExpenses } from "~/db/expenses";
 import { db } from "~/db/index";
 import { listSuppliers } from "~/db/suppliers";
@@ -54,6 +55,9 @@ export default function Expenses() {
   const expenses = createAsync(() => listExpensesQuery(), { initialValue: [] });
   const categories = createAsync(() => listCategoriesQuery(), { initialValue: [] });
   const suppliers = createAsync(() => listSuppliersQuery(), { initialValue: [] });
+  const [date, setDate] = createSignal("");
+  const [amount, setAmount] = createSignal(0);
+  const [currency, setCurrency] = createSignal<"ARS" | "EUR">("EUR");
   const submission = useSubmission(addExpense);
   const money = (cents: number) => fromCents(cents).toFixed(2);
   const cell = { padding: "0.4rem 0.6rem", "border-bottom": "1px solid #eee" } as const;
@@ -74,8 +78,18 @@ export default function Expenses() {
         method="post"
         style={{ display: "flex", gap: "0.5rem", "flex-wrap": "wrap", margin: "1rem 0" }}
       >
-        <input type="date" name="date" required />
-        <select name="currency">
+        <input
+          type="date"
+          name="date"
+          required
+          value={date()}
+          onInput={(e) => setDate(e.currentTarget.value)}
+        />
+        <select
+          name="currency"
+          value={currency()}
+          onChange={(e) => setCurrency(e.currentTarget.value as "ARS" | "EUR")}
+        >
           <option value="EUR">EUR</option>
           <option value="ARS">ARS</option>
         </select>
@@ -86,6 +100,8 @@ export default function Expenses() {
           min="0"
           placeholder={t("common.amount")}
           required
+          value={amount() || ""}
+          onInput={(e) => setAmount(Number(e.currentTarget.value))}
         />
         <select name="categoryId">
           <option value="">{t("expenses.category")}</option>
@@ -98,6 +114,8 @@ export default function Expenses() {
         <input name="detail" placeholder={t("expenses.detail")} />
         <button type="submit">{t("common.save")}</button>
       </form>
+
+      <FxPreview date={date()} amount={amount()} currency={currency()} />
 
       <p>
         <A href="/suppliers">{t("suppliers.manage")}</A>
