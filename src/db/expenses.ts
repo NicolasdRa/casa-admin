@@ -1,5 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import { assertCurrency, assertIsoDate, assertPositiveCents } from "../lib/validate.ts";
 import { manualSnapshot, snapshotForDate } from "./fx.ts";
 import * as schema from "./schema.ts";
 import { getUserById, listUsers } from "./users.ts";
@@ -31,6 +32,9 @@ export function receiptPlan(mimeType: string): "webp" | "passthrough" {
 
 /** Record an expense, snapshotting the FX rate + both currencies immutably onto the row. */
 export function createExpense(db: Db, input: NewExpense) {
+  assertIsoDate(input.date);
+  assertCurrency(input.currency);
+  assertPositiveCents(input.amount);
   const fx =
     input.manualRate != null
       ? manualSnapshot(input.date, input.currency, input.amount, input.manualRate)

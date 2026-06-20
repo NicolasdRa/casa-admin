@@ -1,6 +1,7 @@
 import { and, desc, gte, like, lte } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { commissionEur } from "../lib/fx.ts";
+import { assertCurrency, assertIsoDate, assertPositiveCents } from "../lib/validate.ts";
 import { manualSnapshot, snapshotForDate } from "./fx.ts";
 import * as schema from "./schema.ts";
 import { getSettings } from "./settings.ts";
@@ -25,6 +26,9 @@ export interface NewBooking {
  * throws if none exists yet (manual override is FX-7).
  */
 export function createBooking(db: Db, input: NewBooking) {
+  assertIsoDate(input.date);
+  assertCurrency(input.currency);
+  assertPositiveCents(input.amount);
   const fx =
     input.manualRate != null
       ? manualSnapshot(input.date, input.currency, input.amount, input.manualRate)

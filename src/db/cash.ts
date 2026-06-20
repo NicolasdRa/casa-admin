@@ -1,5 +1,6 @@
 import { asc } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import { assertIsoDate } from "../lib/validate.ts";
 import * as schema from "./schema.ts";
 
 type Db = BetterSQLite3Database<typeof schema>;
@@ -13,6 +14,7 @@ export interface NewCashEntry {
 }
 
 export function createCashEntry(db: Db, input: NewCashEntry) {
+  assertIsoDate(input.date);
   const concept = input.concept.trim();
   if (!concept) throw new Error("concept required");
   const [row] = db

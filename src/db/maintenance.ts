@@ -1,5 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import { assertIsoDate } from "../lib/validate.ts";
 import * as schema from "./schema.ts";
 
 type Db = BetterSQLite3Database<typeof schema>;
@@ -13,6 +14,7 @@ export interface NewTask {
 }
 
 export function createTask(db: Db, input: NewTask) {
+  assertIsoDate(input.date);
   const description = input.description.trim();
   if (!description) throw new Error("task description required");
   const [row] = db
