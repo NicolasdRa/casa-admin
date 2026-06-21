@@ -38,7 +38,7 @@ Bilingual (ES default / EN) rental-admin app on **SolidStart 1.x (Vinxi)** — f
 
 `better-sqlite3` is native and marked SSR-external in `app.config.ts` — don't try to bundle it. Native builds are pre-approved in `pnpm-workspace.yaml`.
 
-The full data model already exists in `src/db/schema.ts` (all phases), but most features (auth, CRUD pages, reports, Caja, BNA fetch, backups) are not built yet. The schema is the source of truth for what's planned.
+The full data model lives in `src/db/schema.ts` (all phases) and remains the source of truth. Most features are now built: auth (session + scrypt passwords + TOTP, `src/lib/{session,password,totp}.ts`, `src/routes/login.tsx`), RBAC (`src/lib/permissions.ts`), audit log (`src/db/audit.ts`), users/suppliers/categories/bookings/expenses/maintenance/occupancy CRUD pages, reports, Caja cash ledger + statements, BNA fetch (`pnpm fx:fetch`), and seed (`pnpm db:seed`). Backups land in `backups/`. Check `src/routes/` and `src/db/` before assuming something is missing.
 
 ## Money & FX conventions (load-bearing — violating these corrupts financial data)
 
