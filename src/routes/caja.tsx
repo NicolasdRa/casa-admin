@@ -68,6 +68,8 @@ export default function Caja() {
   const money = (c: number) => fromCents(c).toFixed(2);
   const sign = (c: number) => (c < 0 ? "num neg" : c > 0 ? "num pos" : "num");
   const partnerName = createMemo(() => new Map(partners().map((p) => [p.id, p.name])));
+  // running balance is computed chronologically, displayed newest-first
+  const ledgerDesc = createMemo(() => ledger().slice().reverse());
   const [formOpen, setFormOpen] = createSignal(false);
   let formEl: HTMLFormElement | undefined;
   createEffect(() => {
@@ -139,53 +141,6 @@ export default function Caja() {
 
       <section class="panel">
         <div class="panel-head">
-          <h2>{t("caja.ledger")}</h2>
-        </div>
-        <div class="table-scroll">
-          <table class="cards">
-            <thead>
-              <tr>
-                <th>{t("common.date")}</th>
-                <th>{t("caja.partner")}</th>
-                <th>{t("caja.concept")}</th>
-                <th class="num">EUR</th>
-                <th class="num">{t("caja.balance")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <For
-                each={ledger()}
-                fallback={
-                  <tr>
-                    <td colspan="5" class="note">
-                      {t("caja.empty")}
-                    </td>
-                  </tr>
-                }
-              >
-                {(e) => (
-                  <tr>
-                    <td>{e.date}</td>
-                    <td data-label={t("caja.partner")}>
-                      {partnerName().get(e.partnerId) ?? e.partnerId}
-                    </td>
-                    <td data-label={t("caja.concept")}>{e.concept}</td>
-                    <td class={sign(e.amountEur)} data-label="EUR">
-                      {money(e.amountEur)}
-                    </td>
-                    <td class={sign(e.runningBalance)} data-label={t("caja.balance")}>
-                      {money(e.runningBalance)}
-                    </td>
-                  </tr>
-                )}
-              </For>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-head">
           <h2>{t("caja.statements")}</h2>
         </div>
         <div class="table-scroll">
@@ -223,6 +178,53 @@ export default function Caja() {
                     </td>
                     <td class={sign(s.settle)} data-label={t("caja.settle")}>
                       {money(s.settle)}
+                    </td>
+                  </tr>
+                )}
+              </For>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>{t("caja.ledger")}</h2>
+        </div>
+        <div class="table-scroll">
+          <table class="cards">
+            <thead>
+              <tr>
+                <th>{t("common.date")}</th>
+                <th>{t("caja.partner")}</th>
+                <th>{t("caja.concept")}</th>
+                <th class="num">EUR</th>
+                <th class="num">{t("caja.balance")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <For
+                each={ledgerDesc()}
+                fallback={
+                  <tr>
+                    <td colspan="5" class="note">
+                      {t("caja.empty")}
+                    </td>
+                  </tr>
+                }
+              >
+                {(e) => (
+                  <tr>
+                    <td>{e.date}</td>
+                    <td data-label={t("caja.partner")}>
+                      {partnerName().get(e.partnerId) ?? e.partnerId}
+                    </td>
+                    <td data-label={t("caja.concept")}>{e.concept}</td>
+                    <td class={sign(e.amountEur)} data-label="EUR">
+                      {money(e.amountEur)}
+                    </td>
+                    <td class={sign(e.runningBalance)} data-label={t("caja.balance")}>
+                      {money(e.runningBalance)}
                     </td>
                   </tr>
                 )}
