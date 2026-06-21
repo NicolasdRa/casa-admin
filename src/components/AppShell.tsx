@@ -72,6 +72,7 @@ export function AppShell(props: { children: JSX.Element }) {
       { href: "/", label: t("nav.dashboard"), end: true },
       { href: "/bookings", label: t("nav.bookings") },
       { href: "/expenses", label: t("nav.expenses") },
+      { href: "/suppliers", label: t("suppliers.manage") },
       { href: "/maintenance", label: t("nav.tasks") },
       { href: "/reports", label: t("nav.reports") },
     ];
