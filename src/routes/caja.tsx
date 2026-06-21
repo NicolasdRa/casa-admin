@@ -1,6 +1,7 @@
 import { action, createAsync, query, redirect, useSubmission } from "@solidjs/router";
-import { createMemo, For, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { AppShell } from "~/components/AppShell";
+import { Modal } from "~/components/Modal";
 import { createCashEntry, listCashLedger } from "~/db/cash";
 import { db } from "~/db/index";
 import { listPartners } from "~/db/partners";
@@ -67,6 +68,11 @@ export default function Caja() {
   const money = (c: number) => fromCents(c).toFixed(2);
   const sign = (c: number) => (c < 0 ? "num neg" : c > 0 ? "num pos" : "num");
   const partnerName = createMemo(() => new Map(partners().map((p) => [p.id, p.name])));
+  const [formOpen, setFormOpen] = createSignal(false);
+  let formEl: HTMLFormElement | undefined;
+  createEffect(() => {
+    if (adding.result?.ok) formEl?.reset();
+  });
 
   return (
     <AppShell>
@@ -74,32 +80,62 @@ export default function Caja() {
         <div>
           <h1>{t("caja.title")}</h1>
         </div>
+        <div class="page-head-actions">
+          <button
+            type="button"
+            onClick={() => {
+              adding.clear?.();
+              setFormOpen(true);
+            }}
+          >
+            + {t("caja.add")}
+          </button>
+        </div>
       </header>
 
-      <form action={addCashEntry} method="post" class="toolbar">
-        <input type="date" name="date" required />
-        <select name="partnerId" required>
-          <For each={partners()}>{(p) => <option value={p.id}>{p.name}</option>}</For>
-        </select>
-        <select name="type">
-          <option value="contribution">{t("caja.contribution")}</option>
-          <option value="withdrawal">{t("caja.withdrawal")}</option>
-          <option value="allocation">{t("caja.allocation")}</option>
-        </select>
-        <input name="concept" placeholder={t("caja.concept")} required />
-        <input
-          type="number"
-          name="amount"
-          step="0.01"
-          min="0"
-          placeholder={t("common.amount")}
-          required
-        />
-        <button type="submit">{t("common.save")}</button>
-      </form>
-      <Show when={adding.result?.error}>
-        <p class="alert alert-error">{t("maintenance.invalid")}</p>
-      </Show>
+      <Modal open={formOpen()} onClose={() => setFormOpen(false)} title={t("caja.add")}>
+        <form ref={formEl} action={addCashEntry} method="post" class="toolbar entry-form">
+          <label class="tb-field">
+            <span>{t("common.date")}</span>
+            <input type="date" name="date" required />
+          </label>
+          <label class="tb-field">
+            <span>{t("caja.partner")}</span>
+            <select name="partnerId" required>
+              <For each={partners()}>{(p) => <option value={p.id}>{p.name}</option>}</For>
+            </select>
+          </label>
+          <label class="tb-field">
+            <span>{t("caja.type")}</span>
+            <select name="type">
+              <option value="contribution">{t("caja.contribution")}</option>
+              <option value="withdrawal">{t("caja.withdrawal")}</option>
+              <option value="allocation">{t("caja.allocation")}</option>
+            </select>
+          </label>
+          <label class="tb-field tb-grow">
+            <span>{t("caja.concept")}</span>
+            <input name="concept" required />
+          </label>
+          <label class="tb-field">
+            <span>{t("common.amount")}</span>
+            <input type="number" name="amount" step="0.01" min="0" required />
+          </label>
+          <button type="submit" disabled={adding.pending}>
+            {adding.pending ? t("common.saving") : t("common.save")}
+          </button>
+        </form>
+        <Show when={adding.result?.ok}>
+          <p class="alert alert-success" role="status">
+            {t("common.saved")}
+          </p>
+        </Show>
+        <Show when={adding.result?.error}>
+          <p class="alert alert-error" role="alert">
+            {t("maintenance.invalid")}
+          </p>
+        </Show>
+      </Modal>
 
       <section class="panel">
         <div class="panel-head">

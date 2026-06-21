@@ -1,7 +1,8 @@
 import { A, action, createAsync, query, useSearchParams, useSubmission } from "@solidjs/router";
-import { createMemo, createSignal, For, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { AppShell } from "~/components/AppShell";
 import { FxPreview } from "~/components/FxPreview";
+import { Modal } from "~/components/Modal";
 import {
   accruedCommissionEur,
   createBooking,
@@ -94,7 +95,18 @@ export default function Bookings() {
   const accrued = createAsync(() => accruedQuery(), { initialValue: 0 });
   const submission = useSubmission(addBooking);
   const money = (cents: number) => fromCents(cents).toFixed(2);
-  const channelLabel = (c: string) => t(`bookings.channel_${c}` as Parameters<typeof t>[0]);
+  const channelLabel = (c: string) =>
+    t(`bookings.channel_${c}` as Parameters<typeof t>[0]) as string;
+  const [formOpen, setFormOpen] = createSignal(false);
+  let formEl: HTMLFormElement | undefined;
+  createEffect(() => {
+    if (submission.result?.ok) {
+      formEl?.reset();
+      setDate("");
+      setAmount(0);
+      setCurrency("EUR");
+    }
+  });
 
   return (
     <AppShell>
@@ -106,69 +118,102 @@ export default function Bookings() {
             <A href="/occupancy">{t("bookings.occupancy")}</A>
           </p>
         </div>
+        <div class="page-head-actions">
+          <button
+            type="button"
+            onClick={() => {
+              submission.clear?.();
+              setFormOpen(true);
+            }}
+          >
+            + {t("bookings.add")}
+          </button>
+        </div>
       </header>
 
-      <form action={addBooking} method="post" class="toolbar">
-        <input name="guest" placeholder={t("bookings.guest")} required />
-        <input
-          type="date"
-          name="date"
-          required
-          title={t("bookings.checkIn")}
-          value={date()}
-          onInput={(e) => setDate(e.currentTarget.value)}
-        />
-        <input
-          type="date"
-          name="checkOut"
-          title={t("bookings.checkOut")}
-          min={date() || undefined}
-        />
-        <select
-          name="currency"
-          value={currency()}
-          onChange={(e) => setCurrency(e.currentTarget.value as "ARS" | "EUR")}
-        >
-          <option value="EUR">EUR</option>
-          <option value="ARS">ARS</option>
-        </select>
-        <input
-          type="number"
-          name="amount"
-          step="0.01"
-          min="0"
-          placeholder={t("common.amount")}
-          required
-          value={amount() || ""}
-          onInput={(e) => setAmount(Number(e.currentTarget.value))}
-        />
-        <select name="type">
-          <option value="booking">{t("bookings.type_booking")}</option>
-          <option value="cancellation">{t("bookings.type_cancellation")}</option>
-          <option value="reimbursement">{t("bookings.type_reimbursement")}</option>
-        </select>
-        <select name="channel" title={t("bookings.channel")}>
-          <option value="direct">{t("bookings.channel_direct")}</option>
-          <option value="booking">{t("bookings.channel_booking")}</option>
-          <option value="airbnb">{t("bookings.channel_airbnb")}</option>
-        </select>
-        <input
-          type="number"
-          name="manualRate"
-          step="0.01"
-          min="0"
-          placeholder={t("common.manualRate")}
-          title={t("common.manualRate")}
-          size="8"
-        />
-        <button type="submit">{t("common.save")}</button>
-      </form>
+      <Modal open={formOpen()} onClose={() => setFormOpen(false)} title={t("bookings.add")}>
+        <form ref={formEl} action={addBooking} method="post" class="toolbar entry-form">
+          <label class="tb-field tb-grow">
+            <span>{t("bookings.guest")}</span>
+            <input name="guest" required />
+          </label>
+          <label class="tb-field">
+            <span>{t("bookings.checkIn")}</span>
+            <input
+              type="date"
+              name="date"
+              required
+              value={date()}
+              onInput={(e) => setDate(e.currentTarget.value)}
+            />
+          </label>
+          <label class="tb-field">
+            <span>{t("bookings.checkOut")}</span>
+            <input type="date" name="checkOut" min={date() || undefined} />
+          </label>
+          <label class="tb-field">
+            <span>{t("common.amount")}</span>
+            <input
+              type="number"
+              name="amount"
+              step="0.01"
+              min="0"
+              required
+              value={amount() || ""}
+              onInput={(e) => setAmount(Number(e.currentTarget.value))}
+            />
+          </label>
+          <label class="tb-field">
+            <span>{t("common.currency")}</span>
+            <select
+              name="currency"
+              value={currency()}
+              onChange={(e) => setCurrency(e.currentTarget.value as "ARS" | "EUR")}
+            >
+              <option value="EUR">EUR</option>
+              <option value="ARS">ARS</option>
+            </select>
+          </label>
+          <label class="tb-field">
+            <span>{t("bookings.type")}</span>
+            <select name="type">
+              <option value="booking">{t("bookings.type_booking")}</option>
+              <option value="cancellation">{t("bookings.type_cancellation")}</option>
+              <option value="reimbursement">{t("bookings.type_reimbursement")}</option>
+            </select>
+          </label>
+          <label class="tb-field">
+            <span>{t("bookings.channel")}</span>
+            <select name="channel">
+              <option value="direct">{t("bookings.channel_direct")}</option>
+              <option value="booking">{t("bookings.channel_booking")}</option>
+              <option value="airbnb">{t("bookings.channel_airbnb")}</option>
+            </select>
+          </label>
+          <label class="tb-field">
+            <span>{t("common.manualRate")}</span>
+            <input type="number" name="manualRate" step="0.01" min="0" size="8" />
+          </label>
+          <button type="submit" disabled={submission.pending}>
+            {submission.pending ? t("common.saving") : t("common.save")}
+          </button>
+        </form>
 
-      <FxPreview date={date()} amount={amount()} currency={currency()} />
+        <FxPreview date={date()} amount={amount()} currency={currency()} />
 
-      <Show when={submission.result?.error}>
-        {(err) => <p class="alert alert-error">{err()}</p>}
-      </Show>
+        <Show when={submission.result?.ok}>
+          <p class="alert alert-success" role="status">
+            {t("common.saved")}
+          </p>
+        </Show>
+        <Show when={submission.result?.error}>
+          {(err) => (
+            <p class="alert alert-error" role="alert">
+              {err()}
+            </p>
+          )}
+        </Show>
+      </Modal>
 
       {/* Filters — plain GET form, URL-driven (works without JS). */}
       <form method="get" class="toolbar filter">

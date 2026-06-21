@@ -327,6 +327,63 @@ tr.total td {
   margin-right: 2px;
 }
 
+/* Entry form: labeled fields grouped (when/amount · classify · attach), button bottom-aligned. */
+.entry-form {
+  align-items: flex-end;
+  row-gap: 12px;
+}
+.tb-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.tb-group + .tb-group {
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
+}
+.tb-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.tb-field > span {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tb-field.tb-grow {
+  flex: 1 1 12rem;
+}
+.tb-field.tb-grow input {
+  width: 100%;
+}
+
+/* Inline row-action forms inside dense table cells. */
+.cell-actions {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+.inline-form {
+  display: inline;
+}
+
+/* On a phone the group dividers and bottom-alignment make no sense — let fields fill the width. */
+@media (max-width: 880px) {
+  .entry-form {
+    align-items: stretch;
+  }
+  .tb-group + .tb-group {
+    padding-left: 0;
+    border-left: none;
+  }
+  .tb-field {
+    flex: 1 1 8rem;
+  }
+}
+
 /* ─── Status chips ──────────────────────────────────────────── */
 
 .chip {
@@ -372,6 +429,11 @@ tr.total td {
   background: var(--warn-bg);
   border-color: #f5e3b8;
 }
+.alert-success {
+  color: var(--pos);
+  background: var(--pos-bg);
+  border-color: #b6e6cf;
+}
 .note {
   color: var(--muted);
   font-size: 0.875rem;
@@ -379,6 +441,9 @@ tr.total td {
 .note-faint {
   color: var(--faint);
   font-size: 0.8125rem;
+}
+.note-neg {
+  color: var(--neg);
 }
 .saved {
   color: var(--pos);
@@ -720,6 +785,98 @@ tr.total td {
 }
 .sheet-account form button {
   flex: 1;
+}
+
+/* ─── Modal — centered native <dialog>, reusable across screens ─── */
+.modal {
+  width: min(92vw, 40rem);
+  max-width: min(92vw, 40rem);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 12px 40px rgb(15 23 42 / 0.22);
+  opacity: 0;
+  transform: translateY(8px) scale(0.99);
+  transition:
+    opacity 180ms ease,
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    overlay 180ms allow-discrete,
+    display 180ms allow-discrete;
+}
+.modal[open] {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+@starting-style {
+  .modal[open] {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+}
+.modal::backdrop {
+  background: rgb(15 23 42 / 0.45);
+  opacity: 0;
+  transition:
+    opacity 180ms ease,
+    overlay 180ms allow-discrete,
+    display 180ms allow-discrete;
+}
+.modal[open]::backdrop {
+  opacity: 1;
+}
+@starting-style {
+  .modal[open]::backdrop {
+    opacity: 0;
+  }
+}
+.modal-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: 86vh;
+}
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.modal-head h2 {
+  font-size: 1.0625rem;
+}
+.modal-close {
+  padding: 4px 9px;
+  line-height: 1;
+}
+.modal-body {
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* In the modal the entry form stacks vertically instead of acting as a wide toolbar. */
+.modal .entry-form {
+  align-items: stretch;
+  flex-direction: column;
+  row-gap: 14px;
+}
+.modal .entry-form .tb-group + .tb-group {
+  padding-left: 0;
+  border-left: none;
+}
+.modal .entry-form .tb-field {
+  flex: 1 1 8rem;
+}
+.modal .entry-form .tb-field.tb-grow {
+  flex-basis: 100%;
+}
+.modal .entry-form > button[type="submit"] {
+  align-self: flex-end;
 }
 
 .page-head {

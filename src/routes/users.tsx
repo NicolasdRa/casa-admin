@@ -1,6 +1,7 @@
 import { action, createAsync, query, redirect, useSubmission } from "@solidjs/router";
-import { For, Show } from "solid-js";
+import { createEffect, createSignal, For, Show } from "solid-js";
 import { AppShell } from "~/components/AppShell";
+import { Modal } from "~/components/Modal";
 import { db } from "~/db/index";
 import { createUser, getUserById, listUsers, updateUser } from "~/db/users";
 import { useI18n } from "~/lib/i18n";
@@ -70,6 +71,11 @@ export default function Users() {
   const adding = useSubmission(addUser);
   const editing = useSubmission(editUser);
   const roles: Role[] = ["superadmin", "admin", "user"];
+  const [formOpen, setFormOpen] = createSignal(false);
+  let formEl: HTMLFormElement | undefined;
+  createEffect(() => {
+    if (adding.result?.ok) formEl?.reset();
+  });
 
   return (
     <AppShell>
@@ -77,30 +83,61 @@ export default function Users() {
         <div>
           <h1>{t("users.title")}</h1>
         </div>
+        <div class="page-head-actions">
+          <button
+            type="button"
+            onClick={() => {
+              adding.clear?.();
+              setFormOpen(true);
+            }}
+          >
+            + {t("users.add")}
+          </button>
+        </div>
       </header>
 
-      <form action={addUser} method="post" class="toolbar">
-        <input name="name" placeholder={t("users.name")} required />
-        <input type="email" name="email" placeholder={t("auth.email")} required />
-        <input
-          type="password"
-          name="password"
-          placeholder={t("auth.password")}
-          required
-          minlength="8"
-        />
-        <select name="role">
-          <For each={roles}>{(r) => <option value={r}>{t(`users.role_${r}`)}</option>}</For>
-        </select>
-        <select name="locale">
-          <option value="es">ES</option>
-          <option value="en">EN</option>
-        </select>
-        <button type="submit">{t("common.save")}</button>
-      </form>
-      <Show when={adding.result?.error}>
-        <p class="alert alert-error">{t("users.addError")}</p>
-      </Show>
+      <Modal open={formOpen()} onClose={() => setFormOpen(false)} title={t("users.add")}>
+        <form ref={formEl} action={addUser} method="post" class="toolbar entry-form">
+          <label class="tb-field tb-grow">
+            <span>{t("users.name")}</span>
+            <input name="name" required />
+          </label>
+          <label class="tb-field tb-grow">
+            <span>{t("auth.email")}</span>
+            <input type="email" name="email" required />
+          </label>
+          <label class="tb-field tb-grow">
+            <span>{t("auth.password")}</span>
+            <input type="password" name="password" required minlength="8" />
+          </label>
+          <label class="tb-field">
+            <span>{t("users.role")}</span>
+            <select name="role">
+              <For each={roles}>{(r) => <option value={r}>{t(`users.role_${r}`)}</option>}</For>
+            </select>
+          </label>
+          <label class="tb-field">
+            <span>{t("settings.locale")}</span>
+            <select name="locale">
+              <option value="es">ES</option>
+              <option value="en">EN</option>
+            </select>
+          </label>
+          <button type="submit" disabled={adding.pending}>
+            {adding.pending ? t("common.saving") : t("common.save")}
+          </button>
+        </form>
+        <Show when={adding.result?.ok}>
+          <p class="alert alert-success" role="status">
+            {t("common.saved")}
+          </p>
+        </Show>
+        <Show when={adding.result?.error}>
+          <p class="alert alert-error" role="alert">
+            {t("users.addError")}
+          </p>
+        </Show>
+      </Modal>
       <Show when={editing.result?.error}>
         <p class="alert alert-error">{t("users.editError")}</p>
       </Show>

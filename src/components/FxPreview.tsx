@@ -40,14 +40,7 @@ export function FxPreview(props: {
       <Show
         when={rate()}
         fallback={
-          <Show
-            when={props.autoFetch}
-            fallback={
-              <p class="note" style={{ color: "var(--neg)" }}>
-                {t("fx.noRate")}
-              </p>
-            }
-          >
+          <Show when={props.autoFetch} fallback={<p class="note note-neg">{t("fx.noRate")}</p>}>
             <p class="note">{t("fx.willFetch")}</p>
           </Show>
         }

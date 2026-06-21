@@ -1,6 +1,7 @@
 import { action, createAsync, query, useSearchParams, useSubmission } from "@solidjs/router";
-import { For, Show } from "solid-js";
+import { createEffect, createSignal, For, Show } from "solid-js";
 import { AppShell } from "~/components/AppShell";
+import { Modal } from "~/components/Modal";
 import { listExpenses } from "~/db/expenses";
 import { db } from "~/db/index";
 import { createTask, listSeasons, listTasks, setTaskStatus } from "~/db/maintenance";
@@ -67,6 +68,11 @@ export default function Maintenance() {
   const expenses = createAsync(() => expensesQuery(), { initialValue: [] });
   const adding = useSubmission(addTask);
   const thisYear = "2026";
+  const [formOpen, setFormOpen] = createSignal(false);
+  let formEl: HTMLFormElement | undefined;
+  createEffect(() => {
+    if (adding.result?.ok) formEl?.reset();
+  });
 
   return (
     <AppShell>
@@ -74,33 +80,61 @@ export default function Maintenance() {
         <div>
           <h1>{t("nav.tasks")}</h1>
         </div>
+        <div class="page-head-actions">
+          <button
+            type="button"
+            onClick={() => {
+              adding.clear?.();
+              setFormOpen(true);
+            }}
+          >
+            + {t("maintenance.add")}
+          </button>
+        </div>
       </header>
 
-      <form action={addTask} method="post" class="toolbar">
-        <input type="date" name="date" required />
-        <input name="description" placeholder={t("maintenance.description")} required />
-        <input
-          name="season"
-          placeholder={t("maintenance.season")}
-          value={thisYear}
-          size="6"
-          required
-        />
-        <select name="expenseId">
-          <option value="">{t("maintenance.linkExpense")}</option>
-          <For each={expenses()}>
-            {(e) => (
-              <option value={e.id}>
-                #{e.id} {e.date} {e.detail ?? ""}
-              </option>
-            )}
-          </For>
-        </select>
-        <button type="submit">{t("common.save")}</button>
-      </form>
-      <Show when={adding.result?.error}>
-        <p class="alert alert-error">{t("maintenance.invalid")}</p>
-      </Show>
+      <Modal open={formOpen()} onClose={() => setFormOpen(false)} title={t("maintenance.add")}>
+        <form ref={formEl} action={addTask} method="post" class="toolbar entry-form">
+          <label class="tb-field">
+            <span>{t("common.date")}</span>
+            <input type="date" name="date" required />
+          </label>
+          <label class="tb-field tb-grow">
+            <span>{t("maintenance.description")}</span>
+            <input name="description" required />
+          </label>
+          <label class="tb-field">
+            <span>{t("maintenance.season")}</span>
+            <input name="season" value={thisYear} size="6" required />
+          </label>
+          <label class="tb-field tb-grow">
+            <span>{t("maintenance.linkExpense")}</span>
+            <select name="expenseId">
+              <option value="">—</option>
+              <For each={expenses()}>
+                {(e) => (
+                  <option value={e.id}>
+                    #{e.id} {e.date} {e.detail ?? ""}
+                  </option>
+                )}
+              </For>
+            </select>
+          </label>
+          <button type="submit" disabled={adding.pending}>
+            {adding.pending ? t("common.saving") : t("common.save")}
+          </button>
+        </form>
+        <Show when={adding.result?.ok}>
+          <p class="alert alert-success" role="status">
+            {t("common.saved")}
+          </p>
+        </Show>
+        <Show when={adding.result?.error}>
+          <p class="alert alert-error" role="alert">
+            {t("maintenance.invalid")}
+          </p>
+        </Show>
+      </Modal>
 
       {/* Filters (GET, URL-driven) */}
       <form method="get" class="toolbar filter">
