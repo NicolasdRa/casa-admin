@@ -233,27 +233,31 @@ table {
   font-size: 0.875rem;
 }
 thead th {
-  padding: 8px 12px;
+  padding: 12px 16px;
   text-align: left;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--muted);
-  background: var(--surface-inset);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--faint);
+  background: transparent;
   border-bottom: 1px solid var(--line-strong);
   white-space: nowrap;
 }
 tbody td {
-  padding: 8px 12px;
+  padding: 16px;
   border-bottom: 1px solid var(--line);
   vertical-align: middle;
 }
-tbody tr:nth-child(even) {
-  background: var(--zebra);
+/* First column anchors the row — emphasised like a record label.
+   nowrap keeps hyphenated ISO dates (the usual first column) from breaking mid-value. */
+tbody td:first-child {
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
 }
 tbody tr:hover {
-  background: var(--surface-inset);
+  background: var(--surface-hover);
 }
 tbody tr:last-child td {
   border-bottom: none;
@@ -390,8 +394,8 @@ tr.total td {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 8px;
-  border-radius: var(--radius);
+  padding: 4px 10px;
+  border-radius: 6px;
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.01em;
@@ -594,7 +598,7 @@ tr.total td {
   min-width: 0; /* let tables shrink/scroll instead of blowing out the grid */
 }
 .app-content {
-  max-width: 64rem;
+  max-width: 72rem;
   margin: 0 auto;
   padding: 28px 28px 64px;
   display: flex;
