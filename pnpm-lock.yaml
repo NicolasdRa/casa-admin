@@ -16,13 +16,13 @@ importers:
         version: 0.16.1(solid-js@1.9.13)
       '@solidjs/start':
         specifier: ^1.3.2
-        version: 1.3.2(solid-js@1.9.13)(vinxi@0.5.11(better-sqlite3@12.11.1)(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(better-sqlite3@12.11.1)))(drizzle-orm@0.45.2(better-sqlite3@12.11.1))(ioredis@5.11.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))(vite@6.4.3(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))
+        version: 1.3.2(solid-js@1.9.13)(vinxi@0.5.11(@types/node@26.0.0)(better-sqlite3@12.11.1)(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1)))(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1))(ioredis@5.11.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))(vite@6.4.3(@types/node@26.0.0)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))
       better-sqlite3:
         specifier: ^12.11.1
         version: 12.11.1
       drizzle-orm:
         specifier: ^0.45.2
-        version: 0.45.2(better-sqlite3@12.11.1)
+        version: 0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1)
       sharp:
         specifier: ^0.35.1
         version: 0.35.1
@@ -31,14 +31,23 @@ importers:
         version: 1.9.13
       vinxi:
         specifier: ^0.5.11
-        version: 0.5.11(better-sqlite3@12.11.1)(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(better-sqlite3@12.11.1)))(drizzle-orm@0.45.2(better-sqlite3@12.11.1))(ioredis@5.11.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)
+        version: 0.5.11(@types/node@26.0.0)(better-sqlite3@12.11.1)(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1)))(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1))(ioredis@5.11.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)
     devDependencies:
       '@biomejs/biome':
         specifier: 2.5.0
         version: 2.5.0
+      '@types/better-sqlite3':
+        specifier: ^7.6.13
+        version: 7.6.13
+      '@types/node':
+        specifier: ^26.0.0
+        version: 26.0.0
       drizzle-kit:
         specifier: ^0.31.10
         version: 0.31.10
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
 
 packages:
 
@@ -1263,6 +1272,9 @@ packages:
   '@types/babel__traverse@7.28.0':
     resolution: {integrity: sha512-8PvcXf70gTDZBgt9ptxJ8elBeBjcLOAcOtoO/mPJjtji1+CdGbHgm77om1GrsPxsiE+uXIpNSK64UYaIwQXd4Q==}
 
+  '@types/better-sqlite3@7.6.13':
+    resolution: {integrity: sha512-NMv9ASNARoKksWtsq/SHakpYAYnhBrQgGD8zkLYk/jaK8jUGn08CfEdTRgYhMypUQAfzSP8W6gNLe0q19/t4VA==}
+
   '@types/braces@3.0.5':
     resolution: {integrity: sha512-SQFof9H+LXeWNz8wDe7oN5zu7ket0qwMu5vZubW4GCJ8Kkeh6nBWUz87+KTz/G3Kqsrp0j/W253XJb3KMEeg3w==}
 
@@ -1277,6 +1289,9 @@ packages:
 
   '@types/micromatch@4.0.10':
     resolution: {integrity: sha512-5jOhFDElqr4DKTrTEbnW8DZ4Hz5LRUEmyrGpCMrD/NphYv3nUnaF08xmSLx1rGGnyEs/kFnhiw6dCgcDqMr5PQ==}
+
+  '@types/node@26.0.0':
+    resolution: {integrity: sha512-vf2YFi1iY9lHGwNJMs01biZFbKJkrZR1T6/MlzjhJLPdntOHLhTrDSnSVcdtvjihi4VQNlrFRIxLsDBlQpAipA==}
 
   '@types/resolve@1.20.2':
     resolution: {integrity: sha512-60BCwRFOZCQhDncwQdxxeOEEkbc5dIMccYLwbxsS4TUNeVECQ/pBJ0j09mrHOl/JJvpRPGwO9SvE4nR2Nb/a4Q==}
@@ -2955,6 +2970,11 @@ packages:
     resolution: {integrity: sha512-1URUxUqfHFM1c+zfSPsa3gnkO7Aq21qyH75SIduNYz4SzY964rn1X2vCMQaHSHhktiw+0kPa2iyb6PUpXqB6Vg==}
     engines: {node: '>=20'}
 
+  typescript@6.0.3:
+    resolution: {integrity: sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
   ufo@1.6.4:
     resolution: {integrity: sha512-JFNbkD1Svwe0KvGi8GOeLcP4kAWQ609twvCdcHxq1oSL8svv39ZuSvajcD8B+5D0eL4+s1Is2D/O6KN3qcTeRA==}
 
@@ -2969,6 +2989,9 @@ packages:
 
   undici-types@5.28.4:
     resolution: {integrity: sha512-3OeMF5Lyowe8VW0skf5qaIE7Or3yS9LS7fvMUI0gg4YxpIBVg0L8BxCmROw2CcYhSkpR68Epz7CGc8MPj94Uww==}
+
+  undici-types@8.3.0:
+    resolution: {integrity: sha512-j375ScV60dom+YkPFIfTLcOiPxkN/buHz5GobjLhixFuANaNs3C9l4GmrWqejgXWJ7BbJcFYpTEUkS1Ge8bpZQ==}
 
   unenv@1.10.0:
     resolution: {integrity: sha512-wY5bskBQFL9n3Eca5XnhH6KbUo/tfvkwm9OpcdCvLaeA7piBNbavbOKJySEwQ1V0RH6HvNlSAFRTpvTqgKRQXQ==}
@@ -4096,11 +4119,11 @@ snapshots:
     dependencies:
       solid-js: 1.9.13
 
-  '@solidjs/start@1.3.2(solid-js@1.9.13)(vinxi@0.5.11(better-sqlite3@12.11.1)(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(better-sqlite3@12.11.1)))(drizzle-orm@0.45.2(better-sqlite3@12.11.1))(ioredis@5.11.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))(vite@6.4.3(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))':
+  '@solidjs/start@1.3.2(solid-js@1.9.13)(vinxi@0.5.11(@types/node@26.0.0)(better-sqlite3@12.11.1)(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1)))(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1))(ioredis@5.11.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))(vite@6.4.3(@types/node@26.0.0)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))':
     dependencies:
-      '@tanstack/server-functions-plugin': 1.121.21(vite@6.4.3(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))
-      '@vinxi/plugin-directives': 0.5.1(vinxi@0.5.11(better-sqlite3@12.11.1)(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(better-sqlite3@12.11.1)))(drizzle-orm@0.45.2(better-sqlite3@12.11.1))(ioredis@5.11.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))
-      '@vinxi/server-components': 0.5.1(vinxi@0.5.11(better-sqlite3@12.11.1)(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(better-sqlite3@12.11.1)))(drizzle-orm@0.45.2(better-sqlite3@12.11.1))(ioredis@5.11.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))
+      '@tanstack/server-functions-plugin': 1.121.21(vite@6.4.3(@types/node@26.0.0)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))
+      '@vinxi/plugin-directives': 0.5.1(vinxi@0.5.11(@types/node@26.0.0)(better-sqlite3@12.11.1)(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1)))(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1))(ioredis@5.11.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))
+      '@vinxi/server-components': 0.5.1(vinxi@0.5.11(@types/node@26.0.0)(better-sqlite3@12.11.1)(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1)))(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1))(ioredis@5.11.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))
       cookie-es: 2.0.1
       defu: 6.1.7
       error-stack-parser: 2.1.4
@@ -4112,8 +4135,8 @@ snapshots:
       source-map-js: 1.2.1
       terracotta: 1.1.0(solid-js@1.9.13)
       tinyglobby: 0.2.17
-      vinxi: 0.5.11(better-sqlite3@12.11.1)(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(better-sqlite3@12.11.1)))(drizzle-orm@0.45.2(better-sqlite3@12.11.1))(ioredis@5.11.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)
-      vite-plugin-solid: 2.11.12(solid-js@1.9.13)(vite@6.4.3(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))
+      vinxi: 0.5.11(@types/node@26.0.0)(better-sqlite3@12.11.1)(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1)))(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1))(ioredis@5.11.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)
+      vite-plugin-solid: 2.11.12(solid-js@1.9.13)(vite@6.4.3(@types/node@26.0.0)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))
     transitivePeerDependencies:
       - '@testing-library/jest-dom'
       - solid-js
@@ -4122,7 +4145,7 @@ snapshots:
 
   '@speed-highlight/core@1.2.17': {}
 
-  '@tanstack/directive-functions-plugin@1.121.21(vite@6.4.3(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))':
+  '@tanstack/directive-functions-plugin@1.121.21(vite@6.4.3(@types/node@26.0.0)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))':
     dependencies:
       '@babel/code-frame': 7.26.2
       '@babel/core': 7.29.7
@@ -4131,7 +4154,7 @@ snapshots:
       '@tanstack/router-utils': 1.162.2
       babel-dead-code-elimination: 1.0.12
       tiny-invariant: 1.3.3
-      vite: 6.4.3(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)
+      vite: 6.4.3(@types/node@26.0.0)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)
     transitivePeerDependencies:
       - supports-color
 
@@ -4148,7 +4171,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@tanstack/server-functions-plugin@1.121.21(vite@6.4.3(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))':
+  '@tanstack/server-functions-plugin@1.121.21(vite@6.4.3(@types/node@26.0.0)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))':
     dependencies:
       '@babel/code-frame': 7.26.2
       '@babel/core': 7.29.7
@@ -4157,7 +4180,7 @@ snapshots:
       '@babel/template': 7.29.7
       '@babel/traverse': 7.29.7
       '@babel/types': 7.29.7
-      '@tanstack/directive-functions-plugin': 1.121.21(vite@6.4.3(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))
+      '@tanstack/directive-functions-plugin': 1.121.21(vite@6.4.3(@types/node@26.0.0)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))
       babel-dead-code-elimination: 1.0.12
       tiny-invariant: 1.3.3
     transitivePeerDependencies:
@@ -4185,6 +4208,10 @@ snapshots:
     dependencies:
       '@babel/types': 7.29.7
 
+  '@types/better-sqlite3@7.6.13':
+    dependencies:
+      '@types/node': 26.0.0
+
   '@types/braces@3.0.5': {}
 
   '@types/estree@1.0.9': {}
@@ -4200,6 +4227,10 @@ snapshots:
   '@types/micromatch@4.0.10':
     dependencies:
       '@types/braces': 3.0.5
+
+  '@types/node@26.0.0':
+    dependencies:
+      undici-types: 8.3.0
 
   '@types/resolve@1.20.2': {}
 
@@ -4246,7 +4277,7 @@ snapshots:
       untun: 0.1.3
       uqr: 0.1.3
 
-  '@vinxi/plugin-directives@0.5.1(vinxi@0.5.11(better-sqlite3@12.11.1)(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(better-sqlite3@12.11.1)))(drizzle-orm@0.45.2(better-sqlite3@12.11.1))(ioredis@5.11.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))':
+  '@vinxi/plugin-directives@0.5.1(vinxi@0.5.11(@types/node@26.0.0)(better-sqlite3@12.11.1)(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1)))(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1))(ioredis@5.11.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))':
     dependencies:
       '@babel/parser': 7.29.7
       acorn: 8.17.0
@@ -4257,18 +4288,18 @@ snapshots:
       magicast: 0.2.11
       recast: 0.23.11
       tslib: 2.8.1
-      vinxi: 0.5.11(better-sqlite3@12.11.1)(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(better-sqlite3@12.11.1)))(drizzle-orm@0.45.2(better-sqlite3@12.11.1))(ioredis@5.11.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)
+      vinxi: 0.5.11(@types/node@26.0.0)(better-sqlite3@12.11.1)(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1)))(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1))(ioredis@5.11.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)
 
-  '@vinxi/server-components@0.5.1(vinxi@0.5.11(better-sqlite3@12.11.1)(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(better-sqlite3@12.11.1)))(drizzle-orm@0.45.2(better-sqlite3@12.11.1))(ioredis@5.11.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))':
+  '@vinxi/server-components@0.5.1(vinxi@0.5.11(@types/node@26.0.0)(better-sqlite3@12.11.1)(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1)))(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1))(ioredis@5.11.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))':
     dependencies:
-      '@vinxi/plugin-directives': 0.5.1(vinxi@0.5.11(better-sqlite3@12.11.1)(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(better-sqlite3@12.11.1)))(drizzle-orm@0.45.2(better-sqlite3@12.11.1))(ioredis@5.11.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))
+      '@vinxi/plugin-directives': 0.5.1(vinxi@0.5.11(@types/node@26.0.0)(better-sqlite3@12.11.1)(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1)))(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1))(ioredis@5.11.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))
       acorn: 8.17.0
       acorn-loose: 8.5.2
       acorn-typescript: 1.4.13(acorn@8.17.0)
       astring: 1.9.0
       magicast: 0.2.11
       recast: 0.23.11
-      vinxi: 0.5.11(better-sqlite3@12.11.1)(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(better-sqlite3@12.11.1)))(drizzle-orm@0.45.2(better-sqlite3@12.11.1))(ioredis@5.11.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)
+      vinxi: 0.5.11(@types/node@26.0.0)(better-sqlite3@12.11.1)(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1)))(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1))(ioredis@5.11.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)
 
   abbrev@3.0.1: {}
 
@@ -4610,10 +4641,10 @@ snapshots:
       '@deno/shim-deno': 0.19.2
       undici-types: 5.28.4
 
-  db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(better-sqlite3@12.11.1)):
+  db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1)):
     optionalDependencies:
       better-sqlite3: 12.11.1
-      drizzle-orm: 0.45.2(better-sqlite3@12.11.1)
+      drizzle-orm: 0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1)
 
   debug@2.6.9:
     dependencies:
@@ -4673,8 +4704,9 @@ snapshots:
       esbuild: 0.25.12
       tsx: 4.22.4
 
-  drizzle-orm@0.45.2(better-sqlite3@12.11.1):
+  drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1):
     optionalDependencies:
+      '@types/better-sqlite3': 7.6.13
       better-sqlite3: 12.11.1
 
   duplexer@0.1.2: {}
@@ -5263,7 +5295,7 @@ snapshots:
 
   napi-build-utils@2.0.0: {}
 
-  nitropack@2.13.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(better-sqlite3@12.11.1)):
+  nitropack@2.13.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1)):
     dependencies:
       '@cloudflare/kv-asset-handler': 0.4.2
       '@rollup/plugin-alias': 6.0.0(rollup@4.62.0)
@@ -5284,7 +5316,7 @@ snapshots:
       cookie-es: 2.0.1
       croner: 10.0.1
       crossws: 0.3.5
-      db0: 0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(better-sqlite3@12.11.1))
+      db0: 0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1))
       defu: 6.1.7
       destr: 2.0.5
       dot-prop: 10.1.0
@@ -5330,7 +5362,7 @@ snapshots:
       unenv: 2.0.0-rc.24
       unimport: 6.3.0
       unplugin-utils: 0.3.1
-      unstorage: 1.17.5(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(better-sqlite3@12.11.1)))(ioredis@5.11.1)
+      unstorage: 1.17.5(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1)))(ioredis@5.11.1)
       untyped: 2.0.0
       unwasm: 0.5.3
       youch: 4.1.1
@@ -5997,6 +6029,8 @@ snapshots:
     dependencies:
       tagged-tag: 1.0.0
 
+  typescript@6.0.3: {}
+
   ufo@1.6.4: {}
 
   ultrahtml@1.6.0: {}
@@ -6011,6 +6045,8 @@ snapshots:
       unplugin: 2.3.11
 
   undici-types@5.28.4: {}
+
+  undici-types@8.3.0: {}
 
   unenv@1.10.0:
     dependencies:
@@ -6084,7 +6120,7 @@ snapshots:
       picomatch: 4.0.4
       webpack-virtual-modules: 0.6.2
 
-  unstorage@1.17.5(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(better-sqlite3@12.11.1)))(ioredis@5.11.1):
+  unstorage@1.17.5(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1)))(ioredis@5.11.1):
     dependencies:
       anymatch: 3.1.3
       chokidar: 5.0.0
@@ -6095,7 +6131,7 @@ snapshots:
       ofetch: 1.5.1
       ufo: 1.6.4
     optionalDependencies:
-      db0: 0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(better-sqlite3@12.11.1))
+      db0: 0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1))
       ioredis: 5.11.1
 
   untun@0.1.3:
@@ -6141,7 +6177,7 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vinxi@0.5.11(better-sqlite3@12.11.1)(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(better-sqlite3@12.11.1)))(drizzle-orm@0.45.2(better-sqlite3@12.11.1))(ioredis@5.11.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4):
+  vinxi@0.5.11(@types/node@26.0.0)(better-sqlite3@12.11.1)(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1)))(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1))(ioredis@5.11.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4):
     dependencies:
       '@babel/core': 7.29.7
       '@babel/plugin-syntax-jsx': 7.29.7(@babel/core@7.29.7)
@@ -6162,7 +6198,7 @@ snapshots:
       hookable: 5.5.3
       http-proxy: 1.18.1
       micromatch: 4.0.8
-      nitropack: 2.13.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(better-sqlite3@12.11.1))
+      nitropack: 2.13.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1))
       node-fetch-native: 1.6.7
       path-to-regexp: 6.3.0
       pathe: 1.1.2
@@ -6174,8 +6210,8 @@ snapshots:
       ufo: 1.6.4
       unctx: 2.5.0
       unenv: 1.10.0
-      unstorage: 1.17.5(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(better-sqlite3@12.11.1)))(ioredis@5.11.1)
-      vite: 6.4.3(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)
+      unstorage: 1.17.5(db0@0.3.4(better-sqlite3@12.11.1)(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1)))(ioredis@5.11.1)
+      vite: 6.4.3(@types/node@26.0.0)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)
       zod: 4.4.3
     transitivePeerDependencies:
       - '@azure/app-configuration'
@@ -6224,7 +6260,7 @@ snapshots:
       - xml2js
       - yaml
 
-  vite-plugin-solid@2.11.12(solid-js@1.9.13)(vite@6.4.3(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)):
+  vite-plugin-solid@2.11.12(solid-js@1.9.13)(vite@6.4.3(@types/node@26.0.0)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)):
     dependencies:
       '@babel/core': 7.29.7
       '@types/babel__core': 7.20.5
@@ -6232,12 +6268,12 @@ snapshots:
       merge-anything: 5.1.7
       solid-js: 1.9.13
       solid-refresh: 0.6.3(solid-js@1.9.13)
-      vite: 6.4.3(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)
-      vitefu: 1.1.3(vite@6.4.3(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))
+      vite: 6.4.3(@types/node@26.0.0)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)
+      vitefu: 1.1.3(vite@6.4.3(@types/node@26.0.0)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4))
     transitivePeerDependencies:
       - supports-color
 
-  vite@6.4.3(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4):
+  vite@6.4.3(@types/node@26.0.0)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4):
     dependencies:
       esbuild: 0.25.12
       fdir: 6.5.0(picomatch@4.0.4)
@@ -6246,14 +6282,15 @@ snapshots:
       rollup: 4.62.0
       tinyglobby: 0.2.17
     optionalDependencies:
+      '@types/node': 26.0.0
       fsevents: 2.3.3
       jiti: 2.7.0
       terser: 5.48.0
       tsx: 4.22.4
 
-  vitefu@1.1.3(vite@6.4.3(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)):
+  vitefu@1.1.3(vite@6.4.3(@types/node@26.0.0)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)):
     optionalDependencies:
-      vite: 6.4.3(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)
+      vite: 6.4.3(@types/node@26.0.0)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)
 
   webidl-conversions@3.0.1: {}
 

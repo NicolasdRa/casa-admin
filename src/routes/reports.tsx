@@ -119,7 +119,7 @@ export default function Reports() {
                   <For each={d().pnl.expensesByGroup}>
                     {(g) => (
                       <tr>
-                        <td>{t(`categories.g_${g.group}`)}</td>
+                        <td>{t(`categories.g_${g.group}` as Parameters<typeof t>[0]) as string}</td>
                         <td class="num">{money(g.eur)}</td>
                       </tr>
                     )}
