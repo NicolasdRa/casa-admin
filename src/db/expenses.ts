@@ -126,6 +126,7 @@ export function listExpensesWithPayer(db: Db) {
       ...e,
       payerUserId: e.paidByUserId,
       payerName: payer?.name ?? null,
+      payerIsOwner: payer?.partnerId != null, // EX-12: only owner-paid expenses can be cash-settled
       reimbursement: reimbursementStatus(e, payer),
     };
   });

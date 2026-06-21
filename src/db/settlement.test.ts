@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createExpense, markExpenseReimbursed } from "./expenses.ts";
+import { listCashLedger } from "./cash.ts";
+import { createExpense, getExpenseById, markExpenseReimbursed } from "./expenses.ts";
 import { upsertFxRate } from "./fx.ts";
 import { createPartner } from "./partners.ts";
 import * as schema from "./schema.ts";
-import { ownerSettlement } from "./settlement.ts";
+import { backfillSettleExpenses, ownerSettlement, settleExpense } from "./settlement.ts";
 import { makeTestDb } from "./testdb.ts";
 import { createUser } from "./users.ts";
 
@@ -120,4 +121,109 @@ test("cashAccount is computed from cash_entries as a separate line (CA-77)", () 
   assert.equal(net(r, ana.id).cashAccount, 0);
   // cash account is independent of the (empty) expense settlement
   assert.equal(net(r, nico.id).expenseNet, 0);
+});
+
+test("settleExpense repays the paying owner for one expense via a cash withdrawal (EX-12)", () => {
+  const { db, nico, ana, uNico, eur } = setup();
+  const e = eur(20000, uNico.id); // Nicolás fronts 200.00 on one expense
+
+  let r = ownerSettlement(db);
+  assert.equal(net(r, nico.id).fronted, 20000);
+  assert.equal(net(r, nico.id).cashAccount, 0);
+
+  const res = settleExpense(db, e.id, "2026-06-21");
+  // the cash line is dated when the money leaves the box (settlement date), as a withdrawal
+  assert.equal(res?.entry.date, "2026-06-21");
+  assert.equal(res?.entry.type, "withdrawal");
+  assert.equal(res?.entry.amountEur, -20000);
+  // the expense is marked reimbursed so it can't be settled twice
+  assert.equal(getExpenseById(db, e.id)?.reimbursedAt, "2026-06-21");
+
+  r = ownerSettlement(db);
+  assert.equal(net(r, nico.id).fronted, 20000); // historical, unchanged
+  assert.equal(net(r, nico.id).cashAccount, -20000); // repayment cancels the fronted credit
+  // Nicolás no longer a standalone creditor — both owners just bear their fair share
+  assert.equal(net(r, nico.id).expenseNet + net(r, nico.id).cashAccount, -10000);
+  assert.equal(net(r, ana.id).expenseNet, -10000);
+
+  // idempotent — a second settle on the same expense is a no-op
+  assert.equal(settleExpense(db, e.id, "2026-06-22"), null);
+});
+
+test("settleExpense refuses a co-host-paid expense (that's the reimburse flow) (EX-12)", () => {
+  const { db, cohost, eur } = setup();
+  const e = eur(4000, cohost.id); // co-host has no partner mapping
+  assert.equal(settleExpense(db, e.id, "2026-06-21"), null);
+});
+
+test("backfillSettleExpenses settles every owner-fronted expense, dated its own date (EX-12)", () => {
+  const { db, uNico, cohost } = setup();
+  upsertFxRate(db, { date: "2024-01-10", compra: 1000, venta: 1100 });
+  upsertFxRate(db, { date: "2024-03-05", compra: 1000, venta: 1100 });
+  const e1 = createExpense(db, {
+    date: "2024-01-10",
+    currency: "EUR",
+    amount: 10000,
+    paidByUserId: uNico.id,
+  });
+  const e2 = createExpense(db, {
+    date: "2024-03-05",
+    currency: "EUR",
+    amount: 5000,
+    paidByUserId: uNico.id,
+  });
+  createExpense(db, { date: "2024-01-10", currency: "EUR", amount: 999, paidByUserId: cohost.id }); // co-host → skipped
+
+  // dry run counts but writes nothing
+  const dry = backfillSettleExpenses(db, { apply: false });
+  assert.equal(dry.count, 2);
+  assert.equal(dry.totalEur, 15000);
+  assert.equal(getExpenseById(db, e1.id)?.reimbursedAt, null);
+  assert.equal(listCashLedger(db).length, 0);
+
+  // apply: each expense settled, cash entry dated the expense's OWN date
+  const res = backfillSettleExpenses(db, { apply: true });
+  assert.equal(res.count, 2);
+  assert.equal(getExpenseById(db, e1.id)?.reimbursedAt, "2024-01-10");
+  assert.equal(getExpenseById(db, e2.id)?.reimbursedAt, "2024-03-05");
+  const ledger = listCashLedger(db);
+  assert.equal(ledger.length, 2);
+  assert.deepEqual(
+    ledger.map((l) => [l.date, l.amountEur]).sort(),
+    [
+      ["2024-01-10", -10000],
+      ["2024-03-05", -5000],
+    ].sort(),
+  );
+
+  // idempotent — a second run finds nothing left
+  assert.equal(backfillSettleExpenses(db, { apply: true }).count, 0);
+});
+
+test("backfillSettleExpenses force rewrites a wrongly-dated settle to the expense date, no dup (EX-12)", () => {
+  const { db, uNico } = setup();
+  upsertFxRate(db, { date: "2024-02-02", compra: 1000, venta: 1100 });
+  const e = createExpense(db, {
+    date: "2024-02-02",
+    currency: "EUR",
+    amount: 5000,
+    paidByUserId: uNico.id,
+  });
+  // simulate a UI settle dated today (the wrong date we want to fix)
+  settleExpense(db, e.id, "2026-06-21");
+  assert.equal(getExpenseById(db, e.id)?.reimbursedAt, "2026-06-21");
+  assert.equal(listCashLedger(db).length, 1);
+
+  // a plain re-run is idempotent — it skips the already-settled expense, leaving the wrong date
+  assert.equal(backfillSettleExpenses(db, { apply: true }).count, 0);
+  assert.equal(getExpenseById(db, e.id)?.reimbursedAt, "2026-06-21");
+
+  // force: wipes prior settle artifacts and rewrites — one entry, dated the expense date
+  const res = backfillSettleExpenses(db, { apply: true, force: true });
+  assert.equal(res.count, 1);
+  assert.equal(getExpenseById(db, e.id)?.reimbursedAt, "2024-02-02");
+  const ledger = listCashLedger(db);
+  assert.equal(ledger.length, 1); // no duplicate left behind
+  assert.equal(ledger[0].date, "2024-02-02");
+  assert.equal(ledger[0].amountEur, -5000);
 });
