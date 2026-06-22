@@ -27,6 +27,11 @@ import { recordAudit, requireUser } from "~/lib/session";
 
 type ExpenseRow = ReturnType<typeof listExpensesWithPayer>[number];
 
+// Dismiss the native popover a menu button lives in — top-layer menus don't close on inner clicks.
+function closePopover(el: HTMLElement) {
+  el.closest<HTMLElement>("[popover]")?.hidePopover();
+}
+
 // Today in the *local* calendar (not UTC) — the manager enters expenses for the day they're living.
 const todayLocal = () => {
   const d = new Date();
@@ -569,65 +574,86 @@ export default function Expenses() {
                       </a>
                     </Show>
                   </td>
-                  {/* Per-row action menu: edit + the contextual reimburse/settle actions. */}
+                  {/* Per-row action menu: edit + the contextual reimburse/settle actions.
+                      Native Popover API → top layer, so the dropdown is never clipped by the
+                      table's overflow; anchor positioning ties it to this row's ⋯ trigger. */}
                   <td class="col-actions" data-label={t("common.actions")}>
-                    <details class="row-menu">
-                      <summary aria-label={t("common.actions")}>⋯</summary>
-                      <div class="menu-pop">
-                        <button
-                          type="button"
-                          class="menu-item"
-                          onClick={(ev) => {
-                            editSub.clear?.(); // fresh modal — no stale error banner
-                            setEditing(e);
-                            ev.currentTarget.closest("details")?.removeAttribute("open");
-                          }}
-                        >
-                          {t("common.edit")}
-                        </button>
-                        <Show when={e.reimbursement === "pending" && me().canReimburse}>
-                          <form action={reimburseExpense} method="post">
-                            <input type="hidden" name="id" value={e.id} />
-                            <button
-                              type="submit"
-                              class="menu-item"
-                              disabled={pendingId(reSub) === e.id}
-                              onClick={(ev) => {
-                                if (!confirm(t("expenses.confirmReimburse"))) ev.preventDefault();
-                              }}
-                            >
-                              {pendingId(reSub) === e.id
-                                ? t("common.saving")
-                                : t("expenses.reimburse")}
-                            </button>
-                          </form>
-                        </Show>
-                        {/* EX-12: an owner fronted this — offer to repay them from the Caja. */}
-                        <Show
-                          when={
-                            e.reimbursement === "not_applicable" &&
-                            e.payerIsOwner &&
-                            me().canReimburse
-                          }
-                        >
-                          <form action={settleExpenseAction} method="post">
-                            <input type="hidden" name="id" value={e.id} />
-                            <button
-                              type="submit"
-                              class="menu-item"
-                              disabled={pendingId(settleSub) === e.id}
-                              onClick={(ev) => {
-                                if (!confirm(t("expenses.confirmSettle"))) ev.preventDefault();
-                              }}
-                            >
-                              {pendingId(settleSub) === e.id
-                                ? t("common.saving")
-                                : t("expenses.settle")}
-                            </button>
-                          </form>
-                        </Show>
-                      </div>
-                    </details>
+                    <button
+                      type="button"
+                      class="row-menu-trigger"
+                      aria-label={t("common.actions")}
+                      popovertarget={`exp-menu-${e.id}`}
+                      style={{ "anchor-name": `--exp-menu-${e.id}` }}
+                    >
+                      ⋯
+                    </button>
+                    <div
+                      id={`exp-menu-${e.id}`}
+                      popover="auto"
+                      class="menu-pop"
+                      style={{ "position-anchor": `--exp-menu-${e.id}` }}
+                    >
+                      <button
+                        type="button"
+                        class="menu-item"
+                        onClick={(ev) => {
+                          editSub.clear?.(); // fresh modal — no stale error banner
+                          setEditing(e);
+                          closePopover(ev.currentTarget);
+                        }}
+                      >
+                        {t("common.edit")}
+                      </button>
+                      <Show when={e.reimbursement === "pending" && me().canReimburse}>
+                        <form action={reimburseExpense} method="post">
+                          <input type="hidden" name="id" value={e.id} />
+                          <button
+                            type="submit"
+                            class="menu-item"
+                            disabled={pendingId(reSub) === e.id}
+                            onClick={(ev) => {
+                              if (!confirm(t("expenses.confirmReimburse"))) {
+                                ev.preventDefault();
+                                return;
+                              }
+                              closePopover(ev.currentTarget);
+                            }}
+                          >
+                            {pendingId(reSub) === e.id
+                              ? t("common.saving")
+                              : t("expenses.reimburse")}
+                          </button>
+                        </form>
+                      </Show>
+                      {/* EX-12: an owner fronted this — offer to repay them from the Caja. */}
+                      <Show
+                        when={
+                          e.reimbursement === "not_applicable" &&
+                          e.payerIsOwner &&
+                          me().canReimburse
+                        }
+                      >
+                        <form action={settleExpenseAction} method="post">
+                          <input type="hidden" name="id" value={e.id} />
+                          <button
+                            type="submit"
+                            class="menu-item"
+                            disabled={pendingId(settleSub) === e.id}
+                            onClick={(ev) => {
+                              if (!confirm(t("expenses.confirmSettle"))) {
+                                ev.preventDefault();
+                                return;
+                              }
+                              closePopover(ev.currentTarget);
+                            }}
+                          >
+                            {pendingId(settleSub) === e.id
+                              ? t("common.saving")
+                              : t("expenses.settle")}
+                          </button>
+                        </form>
+                      </Show>
+                    </div>
                   </td>
                 </tr>
               )}

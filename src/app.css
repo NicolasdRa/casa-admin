@@ -383,18 +383,14 @@ tr.total td {
   white-space: nowrap;
   text-align: right;
 }
-.row-menu {
-  position: relative;
-  display: inline-block;
-}
-/* The ⋯ trigger reads as a real button — bordered, ink-dark glyph, navy on hover/open. */
-.row-menu > summary {
+/* The ⋯ trigger reads as a real button — bordered, ink-dark glyph, navy on hover. */
+.row-menu-trigger {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 30px;
   height: 30px;
-  list-style: none;
+  padding: 0;
   cursor: pointer;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
@@ -403,37 +399,38 @@ tr.total td {
   font-size: 1.25rem;
   line-height: 1;
   user-select: none;
-  transition:
-    background 120ms ease,
-    border-color 120ms ease,
-    color 120ms ease;
 }
-.row-menu > summary::-webkit-details-marker {
-  display: none;
-}
-.row-menu > summary::marker {
-  content: "";
-}
-.row-menu > summary:hover,
-.row-menu[open] > summary {
+.row-menu-trigger:hover {
   background: var(--surface-inset);
   border-color: var(--navy);
   color: var(--navy);
 }
+
+/* Action menu rendered with the native Popover API: it lives in the top layer, so it is never
+   clipped by the table's overflow, and gets light-dismiss + Esc handling for free. */
 .menu-pop {
-  position: absolute;
-  right: 0;
-  z-index: var(--z-pop);
-  min-width: 10rem;
-  margin-top: var(--u);
-  padding: var(--u);
-  display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 10rem;
+  padding: var(--u);
   background: var(--surface);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   box-shadow: 0 8px 24px rgb(15 23 42 / 0.18);
+}
+.menu-pop:popover-open {
+  display: flex;
+}
+/* Anchor the popover under its row's ⋯ trigger where supported; otherwise it gracefully falls
+   back to the UA-centred popover. anchor-name / position-anchor are set per row via inline style. */
+@supports (anchor-name: --x) {
+  .menu-pop {
+    position: fixed;
+    inset: auto;
+    margin: var(--u) 0 0;
+    top: anchor(bottom);
+    right: anchor(right);
+  }
 }
 .menu-pop form {
   display: block;
