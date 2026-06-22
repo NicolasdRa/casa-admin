@@ -4,6 +4,11 @@ import * as schema from "./schema.ts";
 
 type Db = BetterSQLite3Database<typeof schema>;
 
+// Constrained vocabularies — the form renders these as selects, and parseSettings rejects
+// anything else so a crafted POST can't persist a garbage source/cadence.
+export const FX_SOURCES = ["BNA"] as const;
+export const BACKUP_CADENCES = ["daily", "weekly", "monthly", "off"] as const;
+
 export type SettingsPatch = Partial<{
   commissionRate: number;
   fxSource: string;
@@ -34,10 +39,11 @@ export function parseSettings(form: FormData): { patch: SettingsPatch } | { erro
   }
   const locale = form.get("defaultLocale");
   if (locale === "es" || locale === "en") patch.defaultLocale = locale;
+  // Allowlist-skip (same shape as locale above): only a supported value is persisted.
   const fxSource = String(form.get("fxSource") ?? "").trim();
-  if (fxSource) patch.fxSource = fxSource;
+  if ((FX_SOURCES as readonly string[]).includes(fxSource)) patch.fxSource = fxSource;
   const backup = String(form.get("backupCadence") ?? "").trim();
-  if (backup) patch.backupCadence = backup;
+  if ((BACKUP_CADENCES as readonly string[]).includes(backup)) patch.backupCadence = backup;
   return { patch };
 }
 

@@ -128,6 +128,13 @@ export default function Suppliers() {
         )}
       </Show>
 
+      {/* Rename/delete used to land silently — confirm the write so the user knows it took. */}
+      <Show when={editing.result?.ok || removing.result?.ok}>
+        <p class="alert alert-success" role="status">
+          {t("common.saved")}
+        </p>
+      </Show>
+
       <div class="panel table-scroll">
         <table>
           <thead>
@@ -147,35 +154,48 @@ export default function Suppliers() {
                 </tr>
               }
             >
-              {(s) => (
-                <tr>
-                  <td>
-                    <form
-                      action={editSupplier}
-                      method="post"
-                      style={{ display: "flex", gap: "8px", "flex-wrap": "wrap" }}
-                    >
-                      <input type="hidden" name="id" value={s.id} />
-                      <input name="name" value={s.name} required />
-                      <button type="submit">{t("common.save")}</button>
-                    </form>
-                  </td>
-                  <td>
-                    <form action={removeSupplier} method="post">
-                      <input type="hidden" name="id" value={s.id} />
-                      <button
-                        type="submit"
-                        class="btn-ghost"
-                        onClick={(e) => {
-                          if (!confirm(t("suppliers.confirmDelete"))) e.preventDefault();
-                        }}
+              {(s) => {
+                // Save stays dimmed until the name actually changes — the row reads as data,
+                // not a wall of live buttons (DESIGN.md's hover-action intent, touch-safe).
+                const [name, setName] = createSignal(s.name);
+                const dirty = () => name().trim() !== "" && name().trim() !== s.name;
+                return (
+                  <tr>
+                    <td>
+                      <form
+                        action={editSupplier}
+                        method="post"
+                        style={{ display: "flex", gap: "8px", "flex-wrap": "wrap" }}
                       >
-                        {t("suppliers.delete")}
-                      </button>
-                    </form>
-                  </td>
-                </tr>
-              )}
+                        <input type="hidden" name="id" value={s.id} />
+                        <input
+                          name="name"
+                          value={s.name}
+                          onInput={(e) => setName(e.currentTarget.value)}
+                          required
+                        />
+                        <button type="submit" disabled={!dirty() || editing.pending}>
+                          {t("common.save")}
+                        </button>
+                      </form>
+                    </td>
+                    <td>
+                      <form action={removeSupplier} method="post">
+                        <input type="hidden" name="id" value={s.id} />
+                        <button
+                          type="submit"
+                          class="btn-ghost"
+                          onClick={(e) => {
+                            if (!confirm(t("suppliers.confirmDelete"))) e.preventDefault();
+                          }}
+                        >
+                          {t("suppliers.delete")}
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                );
+              }}
             </For>
           </tbody>
         </table>

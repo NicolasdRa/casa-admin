@@ -1,8 +1,14 @@
 import { action, createAsync, query, redirect, useSubmission } from "@solidjs/router";
-import { Show } from "solid-js";
+import { For, Show } from "solid-js";
 import { AppShell } from "~/components/AppShell";
 import { db } from "~/db/index";
-import { getSettings, parseSettings, updateSettings } from "~/db/settings";
+import {
+  BACKUP_CADENCES,
+  FX_SOURCES,
+  getSettings,
+  parseSettings,
+  updateSettings,
+} from "~/db/settings";
 import { useI18n } from "~/lib/i18n";
 import { can } from "~/lib/permissions";
 import { currentUser, recordAudit } from "~/lib/session";
@@ -57,7 +63,15 @@ export default function Settings() {
             </label>
             <label class="field">
               <span>{t("settings.fxSource")}</span>
-              <input name="fxSource" value={cfg().fxSource} />
+              <select name="fxSource">
+                <For each={FX_SOURCES}>
+                  {(src) => (
+                    <option value={src} selected={cfg().fxSource === src}>
+                      {src}
+                    </option>
+                  )}
+                </For>
+              </select>
             </label>
             <label class="field">
               <span>{t("settings.locale")}</span>
@@ -72,7 +86,15 @@ export default function Settings() {
             </label>
             <label class="field">
               <span>{t("settings.backup")}</span>
-              <input name="backupCadence" value={cfg().backupCadence} />
+              <select name="backupCadence">
+                <For each={BACKUP_CADENCES}>
+                  {(c) => (
+                    <option value={c} selected={cfg().backupCadence === c}>
+                      {t(`settings.backup_${c}` as Parameters<typeof t>[0]) as string}
+                    </option>
+                  )}
+                </For>
+              </select>
             </label>
             <div
               style={{

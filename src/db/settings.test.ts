@@ -54,3 +54,23 @@ test("parseSettings collects locale, trimmed fxSource and backupCadence", () => 
   assert.ok("patch" in r);
   assert.deepEqual(r.patch, { defaultLocale: "en", fxSource: "BNA", backupCadence: "daily" });
 });
+
+test("parseSettings ignores an unsupported fxSource or backupCadence (no garbage persisted)", () => {
+  const f = new FormData();
+  f.set("fxSource", "Bloomberg");
+  f.set("backupCadence", "hourly");
+  const r = parseSettings(f);
+  assert.ok("patch" in r);
+  assert.equal("fxSource" in r.patch, false);
+  assert.equal("backupCadence" in r.patch, false);
+});
+
+test("parseSettings accepts each supported backup cadence", () => {
+  for (const c of ["daily", "weekly", "monthly", "off"]) {
+    const f = new FormData();
+    f.set("backupCadence", c);
+    const r = parseSettings(f);
+    assert.ok("patch" in r, `expected patch for ${c}`);
+    assert.equal(r.patch.backupCadence, c);
+  }
+});
