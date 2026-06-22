@@ -10,6 +10,7 @@ import {
   summarizeBookings,
 } from "~/db/bookings";
 import { db } from "~/db/index";
+import { errorCode } from "~/lib/errors";
 import { useI18n } from "~/lib/i18n";
 import { fromCents, toCents } from "~/lib/money";
 import { requireUser } from "~/lib/session";
@@ -40,9 +41,9 @@ const listBookingsQuery = query(async (filter: Filter) => {
   return listBookings(db, filter);
 }, "bookings");
 
-// Map a thrown message to a stable i18n suffix (bookings.err_*) — raw exception text never reaches
-// the user. Prefix table (not an if-chain) keeps cyclomatic complexity under the Codacy gate.
-const BOOKING_ERROR_PREFIXES: [string, string][] = [
+// Thrown-message → bookings.err_* suffix table (specific needles first). Raw exception text never
+// reaches the user; the page translates the returned suffix in the active locale.
+const BOOKING_ERROR_NEEDLES: [string, string][] = [
   ["No FX rate", "fxNoRate"],
   ["check-out", "checkOutBeforeCheckIn"],
   ["manual rate", "manualRateInvalid"],
@@ -51,10 +52,7 @@ const BOOKING_ERROR_PREFIXES: [string, string][] = [
   ["invalid channel", "channelInvalid"],
   ["invalid amount", "amountInvalid"],
 ];
-function bookingErrorCode(e: unknown): string {
-  const m = e instanceof Error ? e.message : String(e);
-  return BOOKING_ERROR_PREFIXES.find(([prefix]) => m.startsWith(prefix))?.[1] ?? "generic";
-}
+const bookingErrorCode = (e: unknown) => errorCode(e, BOOKING_ERROR_NEEDLES);
 
 const addBooking = action(async (form: FormData) => {
   "use server";

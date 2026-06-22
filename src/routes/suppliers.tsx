@@ -4,20 +4,17 @@ import { AppShell } from "~/components/AppShell";
 import { Modal } from "~/components/Modal";
 import { db } from "~/db/index";
 import { createSupplier, deleteSupplier, listSuppliers, renameSupplier } from "~/db/suppliers";
+import { errorCode } from "~/lib/errors";
 import { useI18n } from "~/lib/i18n";
 import { recordAudit, requireUser } from "~/lib/session";
 
-// Map a thrown supplier error to a stable i18n suffix (suppliers.err_*) — raw exception text
-// never reaches the user.
-const SUPPLIER_ERROR_PREFIXES: [string, string][] = [
+// Thrown-message → suppliers.err_* suffix table. Raw exception text never reaches the user.
+const SUPPLIER_ERROR_NEEDLES: [string, string][] = [
   ["supplier name required", "nameRequired"],
   ["already exists", "duplicate"],
   ["in use", "inUse"],
 ];
-function supplierErrorCode(e: unknown): string {
-  const m = e instanceof Error ? e.message : String(e);
-  return SUPPLIER_ERROR_PREFIXES.find(([k]) => m.includes(k))?.[1] ?? "generic";
-}
+const supplierErrorCode = (e: unknown) => errorCode(e, SUPPLIER_ERROR_NEEDLES);
 
 const listSuppliersQuery = query(async () => {
   "use server";

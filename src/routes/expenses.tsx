@@ -19,6 +19,7 @@ import { db } from "~/db/index";
 import { settleExpense } from "~/db/settlement";
 import { listSuppliers } from "~/db/suppliers";
 import { listUsers } from "~/db/users";
+import { errorCode } from "~/lib/errors";
 import { useI18n } from "~/lib/i18n";
 import { fromCents, toCents } from "~/lib/money";
 import { can } from "~/lib/permissions";
@@ -33,19 +34,18 @@ const todayLocal = () => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 };
 
-// Map a thrown message / internal code to a stable i18n suffix (expenses.err_*). Raw exception text
-// never reaches the user: the action returns the suffix, the page translates it in the active locale.
-function expenseErrorCode(e: unknown): string {
-  const m = e instanceof Error ? e.message : String(e);
-  if (m.startsWith("No FX rate")) return "fxNoRate";
-  if (m.startsWith("invalid date")) return "dateInvalid";
-  if (m.startsWith("invalid amount")) return "amountInvalid";
-  if (m.startsWith("invalid currency")) return "currencyInvalid";
-  if (m.includes("pending co-host")) return "notReimbursable";
-  if (m.includes("must be an owner")) return "reimburserNotOwner";
-  if (m === "expense not found") return "notFound";
-  return "generic";
-}
+// Thrown-message → expenses.err_* suffix table (specific needles first). Raw exception text never
+// reaches the user: the action returns the suffix, the page translates it in the active locale.
+const EXPENSE_ERROR_NEEDLES: [string, string][] = [
+  ["No FX rate", "fxNoRate"],
+  ["invalid date", "dateInvalid"],
+  ["invalid amount", "amountInvalid"],
+  ["invalid currency", "currencyInvalid"],
+  ["pending co-host", "notReimbursable"],
+  ["must be an owner", "reimburserNotOwner"],
+  ["expense not found", "notFound"],
+];
+const expenseErrorCode = (e: unknown) => errorCode(e, EXPENSE_ERROR_NEEDLES);
 
 const listExpensesQuery = query(async () => {
   "use server";
