@@ -41,6 +41,7 @@ export default function Login() {
             type="email"
             name="email"
             placeholder={t("auth.email")}
+            aria-label={t("auth.email")}
             required
             autocomplete="username"
           />
@@ -48,6 +49,7 @@ export default function Login() {
             type="password"
             name="password"
             placeholder={t("auth.password")}
+            aria-label={t("auth.password")}
             required
             autocomplete="current-password"
           />
@@ -58,6 +60,7 @@ export default function Login() {
               inputmode="numeric"
               autocomplete="one-time-code"
               placeholder={t("auth.totp")}
+              aria-label={t("auth.totp")}
               required
             />
           </Show>

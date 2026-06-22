@@ -67,7 +67,7 @@ export default function Maintenance() {
   const seasons = createAsync(() => seasonsQuery(), { initialValue: [] });
   const expenses = createAsync(() => expensesQuery(), { initialValue: [] });
   const adding = useSubmission(addTask);
-  const thisYear = "2026";
+  const thisYear = String(new Date().getFullYear());
   const [formOpen, setFormOpen] = createSignal(false);
   let formEl: HTMLFormElement | undefined;
   createEffect(() => {
