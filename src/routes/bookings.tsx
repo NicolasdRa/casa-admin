@@ -22,13 +22,27 @@ interface Filter {
   channel?: "direct" | "booking" | "airbnb";
 }
 
+type BookingChannel = "direct" | "booking" | "airbnb";
+type BookingChannelKey =
+  | "bookings.channel_direct"
+  | "bookings.channel_booking"
+  | "bookings.channel_airbnb";
+
+const bookingChannelKey: Record<BookingChannel, BookingChannelKey> = {
+  direct: "bookings.channel_direct",
+  booking: "bookings.channel_booking",
+  airbnb: "bookings.channel_airbnb",
+};
+
 const listBookingsQuery = query(async (filter: Filter) => {
   "use server";
+  await requireUser();
   return listBookings(db, filter);
 }, "bookings");
 
 const addBooking = action(async (form: FormData) => {
   "use server";
+  await requireUser();
   const guest = String(form.get("guest") ?? "").trim();
   const date = String(form.get("date") ?? "");
   const checkOut = String(form.get("checkOut") ?? "") || undefined;
@@ -95,8 +109,7 @@ export default function Bookings() {
   const accrued = createAsync(() => accruedQuery(), { initialValue: 0 });
   const submission = useSubmission(addBooking);
   const money = (cents: number) => fromCents(cents).toFixed(2);
-  const channelLabel = (c: string) =>
-    t(`bookings.channel_${c}` as Parameters<typeof t>[0]) as string;
+  const channelLabel = (c: BookingChannel) => t(bookingChannelKey[c]);
   const [formOpen, setFormOpen] = createSignal(false);
   let formEl: HTMLFormElement | undefined;
   createEffect(() => {
@@ -248,9 +261,9 @@ export default function Bookings() {
               <th>{t("bookings.guest")}</th>
               <th>{t("bookings.channel")}</th>
               <th class="num">EUR</th>
-              <th class="num">ARS</th>
+              {/* <th class="num">ARS</th>
               <th class="num">{t("common.rate")}</th>
-              <th>{t("common.rateDate")}</th>
+              <th>{t("common.rateDate")}</th> */}
               <th class="num">{t("bookings.commission")}</th>
             </tr>
           </thead>
@@ -267,13 +280,13 @@ export default function Bookings() {
                   <td class="num" data-label="EUR">
                     {money(b.amountEur)}
                   </td>
-                  <td class="num" data-label="ARS">
+                  {/* <td class="num" data-label="ARS">
                     {money(b.amountArs)}
                   </td>
                   <td class="num" data-label={t("common.rate")}>
                     {b.fxRate}
                   </td>
-                  <td data-label={t("common.rateDate")}>{b.fxRateDate}</td>
+                  <td data-label={t("common.rateDate")}>{b.fxRateDate}</td> */}
                   <td class="num" data-label={t("bookings.commission")}>
                     {money(b.commissionEur)}
                   </td>
@@ -296,7 +309,7 @@ export default function Bookings() {
                   <th>{t("bookings.year")}</th>
                   <th class="num">{t("bookings.count")}</th>
                   <th class="num">EUR</th>
-                  <th class="num">ARS</th>
+                  {/* <th class="num">ARS</th> */}
                   <th class="num">{t("bookings.commission")}</th>
                 </tr>
               </thead>
@@ -307,7 +320,7 @@ export default function Bookings() {
                       <td>{y.year}</td>
                       <td class="num">{y.count}</td>
                       <td class="num">{money(y.incomeEur)}</td>
-                      <td class="num">{money(y.incomeArs)}</td>
+                      {/* <td class="num">{money(y.incomeArs)}</td> */}
                       <td class="num">{money(y.commissionEur)}</td>
                     </tr>
                   )}
@@ -316,7 +329,7 @@ export default function Bookings() {
                   <td>{t("bookings.total")}</td>
                   <td class="num">{summary().total.count}</td>
                   <td class="num">{money(summary().total.incomeEur)}</td>
-                  <td class="num">{money(summary().total.incomeArs)}</td>
+                  {/* <td class="num">{money(summary().total.incomeArs)}</td> */}
                   <td class="num">{money(summary().total.commissionEur)}</td>
                 </tr>
               </tbody>
