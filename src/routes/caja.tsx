@@ -70,6 +70,19 @@ export default function Caja() {
   const partnerName = createMemo(() => new Map(partners().map((p) => [p.id, p.name])));
   // running balance is computed chronologically, displayed newest-first
   const ledgerDesc = createMemo(() => ledger().slice().reverse());
+  // Column totals reconcile the split — settle should net to ~0 and cashAccount to the box balance.
+  const totals = createMemo(() => {
+    const rows = statements();
+    const sum = (f: (s: (typeof rows)[number]) => number) => rows.reduce((a, s) => a + f(s), 0);
+    return {
+      incomeShare: sum((s) => s.incomeShare),
+      commissionShare: sum((s) => s.commissionShare),
+      expenseShare: sum((s) => s.expenseShare),
+      fronted: sum((s) => s.fronted),
+      cashAccount: sum((s) => s.cashAccount),
+      settle: sum((s) => s.settle),
+    };
+  });
   const [formOpen, setFormOpen] = createSignal(false);
   let formEl: HTMLFormElement | undefined;
   createEffect(() => {
@@ -182,6 +195,29 @@ export default function Caja() {
                   </tr>
                 )}
               </For>
+              <Show when={statements().length > 0}>
+                <tr class="total">
+                  <td>{t("caja.total")}</td>
+                  <td class="num" data-label={t("caja.income")}>
+                    {money(totals().incomeShare)}
+                  </td>
+                  <td class="num" data-label={t("caja.commission")}>
+                    {money(totals().commissionShare)}
+                  </td>
+                  <td class="num" data-label={t("caja.expenseShare")}>
+                    {money(totals().expenseShare)}
+                  </td>
+                  <td class="num" data-label={t("caja.fronted")}>
+                    {money(totals().fronted)}
+                  </td>
+                  <td class={sign(totals().cashAccount)} data-label={t("caja.cashAccount")}>
+                    {money(totals().cashAccount)}
+                  </td>
+                  <td class={sign(totals().settle)} data-label={t("caja.settle")}>
+                    {money(totals().settle)}
+                  </td>
+                </tr>
+              </Show>
             </tbody>
           </table>
         </div>

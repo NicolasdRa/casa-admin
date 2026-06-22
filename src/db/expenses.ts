@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { count, desc, eq } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { assertCurrency, assertIsoDate, assertPositiveCents } from "../lib/validate.ts";
 import { manualSnapshot, snapshotForDate } from "./fx.ts";
@@ -131,6 +131,31 @@ export function createCategory(db: Db, input: { name: string; group: CategoryGro
   if (!CATEGORY_GROUPS.includes(input.group)) throw new Error("invalid category group");
   const [row] = db.insert(schema.categories).values({ name, group: input.group }).returning().all();
   return row;
+}
+
+/** Rename a category (trimmed). Group stays as set at creation. */
+export function renameCategory(db: Db, id: number, name: string) {
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("category name required");
+  const [row] = db
+    .update(schema.categories)
+    .set({ name: trimmed })
+    .where(eq(schema.categories.id, id))
+    .returning()
+    .all();
+  return row;
+}
+
+/** Delete a category. Refuses if any expense still references it — the FK is nullable, so SQLite
+ *  wouldn't stop us, but orphaning an expense's category_id loses its classification. Reassign first. */
+export function deleteCategory(db: Db, id: number) {
+  const [{ n }] = db
+    .select({ n: count() })
+    .from(schema.expenses)
+    .where(eq(schema.expenses.categoryId, id))
+    .all();
+  if (n > 0) throw new Error(`category is in use by ${n} expense(s)`);
+  db.delete(schema.categories).where(eq(schema.categories.id, id)).run();
 }
 
 /** EX-8: total EUR (cents) fronted, grouped by payer. Null payer (unattributed) gets its own bucket. */
