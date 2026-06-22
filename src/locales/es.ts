@@ -116,6 +116,10 @@ export const es = {
     action: "Acción",
     entity: "Entidad",
     empty: "Sin registros todavía.",
+    allActions: "Todas las acciones",
+    searchEntity: "Buscar entidad…",
+    prev: "Anteriores",
+    next: "Siguientes",
   },
   caja: {
     title: "Caja",

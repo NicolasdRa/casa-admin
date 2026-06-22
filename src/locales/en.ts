@@ -115,6 +115,10 @@ export const en = {
     action: "Action",
     entity: "Entity",
     empty: "No entries yet.",
+    allActions: "All actions",
+    searchEntity: "Search entity…",
+    prev: "Previous",
+    next: "Next",
   },
   caja: {
     title: "Cash account",
