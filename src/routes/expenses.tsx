@@ -13,6 +13,7 @@ import {
   receiptPlan,
   safeExt,
   setExpenseReceipt,
+  updateExpenseMeta,
 } from "~/db/expenses";
 import { db } from "~/db/index";
 import { settleExpense } from "~/db/settlement";
@@ -22,6 +23,8 @@ import { useI18n } from "~/lib/i18n";
 import { fromCents, toCents } from "~/lib/money";
 import { can } from "~/lib/permissions";
 import { recordAudit, requireUser } from "~/lib/session";
+
+type ExpenseRow = ReturnType<typeof listExpensesWithPayer>[number];
 
 // Today in the *local* calendar (not UTC) — the manager enters expenses for the day they're living.
 const todayLocal = () => {
@@ -171,6 +174,25 @@ const settleExpenseAction = action(async (form: FormData) => {
   return { ok: true };
 }, "settleExpense");
 
+// Edit an expense's classification (detail/category/supplier) from the row action menu. Money,
+// currency, date and the FX snapshot are entered once and never editable here.
+const editExpense = action(async (form: FormData) => {
+  "use server";
+  await requireUser();
+  const id = Number(form.get("id"));
+  const detail = String(form.get("detail") ?? "").trim() || null;
+  const categoryRaw = form.get("categoryId");
+  const categoryId = categoryRaw ? Number(categoryRaw) : null;
+  const supplierRaw = form.get("supplierId");
+  const supplierId = supplierRaw ? Number(supplierRaw) : null;
+  // EX-8: payer is editable here so imported/unattributed rows can be attributed; "" clears it.
+  const payerRaw = form.get("paidByUserId");
+  const paidByUserId = payerRaw ? Number(payerRaw) : null;
+  updateExpenseMeta(db, id, { detail, categoryId, supplierId, paidByUserId });
+  await recordAudit("update", `expense:${id}`);
+  return { ok: true };
+}, "editExpense");
+
 export const route = {
   preload: () => {
     listExpensesQuery();
@@ -201,6 +223,12 @@ export default function Expenses() {
   const submission = useSubmission(addExpense);
   const reSub = useSubmission(reimburseExpense);
   const settleSub = useSubmission(settleExpenseAction);
+  const editSub = useSubmission(editExpense);
+  // The expense whose edit modal is open (null = closed). Holds the row so the form pre-fills.
+  const [editing, setEditing] = createSignal<ExpenseRow | null>(null);
+  const supplierNameById = createMemo(() => new Map(suppliers().map((s) => [s.id, s.name])));
+  const supplierName = (id: number | null) =>
+    id != null ? (supplierNameById().get(id) ?? null) : null;
   const money = (cents: number) => fromCents(cents).toFixed(2);
   // Translate a returned error code to a human, localized message; raw codes never render.
   const errMsg = (code: string) => t(`expenses.err_${code}` as Parameters<typeof t>[0]) as string;
@@ -217,6 +245,11 @@ export default function Expenses() {
       setAmount(0);
       setCurrency("EUR");
     }
+  });
+
+  // Close the edit modal once its save lands.
+  createEffect(() => {
+    if (editSub.result?.ok) setEditing(null);
   });
 
   const visible = createMemo(() => {
@@ -362,6 +395,77 @@ export default function Expenses() {
         </Show>
       </Modal>
 
+      {/* Edit modal: only the classification (detail/category/supplier) is mutable — money, currency,
+          date and the FX snapshot are entered once and shown read-only. */}
+      <Modal
+        open={editing() != null}
+        onClose={() => setEditing(null)}
+        title={t("expenses.editTitle")}
+      >
+        <Show when={editing()}>
+          {(e) => (
+            <form action={editExpense} method="post" class="toolbar entry-form">
+              <input type="hidden" name="id" value={e().id} />
+              <p class="note-faint">
+                {e().date} · {money(e().amountEur)} EUR · {money(e().amountArs)} ARS
+              </p>
+              <div class="tb-group">
+                <label class="tb-field">
+                  <span>{t("expenses.category")}</span>
+                  <select name="categoryId">
+                    <option value="">—</option>
+                    <For each={categories()}>
+                      {(c) => (
+                        <option value={c.id} selected={c.id === e().categoryId}>
+                          {c.name}
+                        </option>
+                      )}
+                    </For>
+                  </select>
+                </label>
+                <label class="tb-field">
+                  <span>{t("expenses.supplier")}</span>
+                  <select name="supplierId">
+                    <option value="">—</option>
+                    <For each={suppliers()}>
+                      {(s) => (
+                        <option value={s.id} selected={s.id === e().supplierId}>
+                          {s.name}
+                        </option>
+                      )}
+                    </For>
+                  </select>
+                </label>
+                {/* EX-8: attribute (or re-attribute) the payer — the fix path for the
+                    "unattributed" warning. Blank = leave unassigned. */}
+                <label class="tb-field">
+                  <span>{t("expenses.payer")}</span>
+                  <select name="paidByUserId">
+                    <option value="">{t("expenses.unassigned")}</option>
+                    <For each={me().users}>
+                      {(u) => (
+                        <option value={u.id} selected={u.id === e().payerUserId}>
+                          {u.name}
+                        </option>
+                      )}
+                    </For>
+                  </select>
+                </label>
+              </div>
+              <div class="tb-group">
+                <label class="tb-field tb-grow">
+                  <span>{t("expenses.detail")}</span>
+                  <input name="detail" value={e().detail ?? ""} />
+                </label>
+              </div>
+              <button type="submit" disabled={editSub.pending}>
+                {editSub.pending ? t("common.saving") : t("common.save")}
+              </button>
+            </form>
+          )}
+        </Show>
+      </Modal>
+
       {/* Row actions (reimburse / settle) surface their outcome here rather than failing silently. */}
       <Show when={reSub.result?.error}>
         {(code) => (
@@ -401,14 +505,20 @@ export default function Expenses() {
         <table class="cards">
           <thead>
             <tr>
-              <th>{t("common.date")}</th>
-              <th>{t("expenses.detail")}</th>
-              <th>{t("expenses.payer")}</th>
+              <th title={t("common.date")}>{t("common.date")}</th>
+              <th title={t("expenses.detail")}>{t("expenses.detail")}</th>
+              <th title={t("expenses.supplier")}>{t("expenses.supplier")}</th>
+              <th title={t("expenses.payer")}>{t("expenses.payer")}</th>
               <th class="num">EUR</th>
               <th class="num">ARS</th>
-              <th class="num">{t("common.rate")}</th>
-              <th>{t("expenses.reimbursement")}</th>
-              <th>{t("expenses.receipt")}</th>
+              <th class="num" title={t("expenses.rateHint")}>
+                {t("common.rate")}
+              </th>
+              <th title={t("expenses.reimbursement")}>{t("expenses.reimbursement")}</th>
+              <th title={t("expenses.receipt")}>{t("expenses.receipt")}</th>
+              <th class="col-actions">
+                <span class="sr-only">{t("common.actions")}</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -416,7 +526,7 @@ export default function Expenses() {
               each={visible()}
               fallback={
                 <tr>
-                  <td colspan="8" class="note">
+                  <td colspan="10" class="note">
                     {t("expenses.empty")}
                   </td>
                 </tr>
@@ -426,6 +536,7 @@ export default function Expenses() {
                 <tr>
                   <td>{e.date}</td>
                   <td data-label={t("expenses.detail")}>{e.detail}</td>
+                  <td data-label={t("expenses.supplier")}>{supplierName(e.supplierId) ?? "—"}</td>
                   <td data-label={t("expenses.payer")}>
                     {e.payerName ?? t("expenses.unassigned")}
                   </td>
@@ -435,21 +546,51 @@ export default function Expenses() {
                   <td class="num" data-label="ARS">
                     {money(e.amountArs)}
                   </td>
+                  {/* Rate is ARS per €1 (see header hint); its date makes the row's conversion
+                      auditable, matching FxPreview's "rate (date)" format. */}
                   <td class="num" data-label={t("common.rate")}>
                     {e.fxRate}
+                    <Show when={e.fxRateDate}>
+                      <span class="note-faint"> · {e.fxRateDate}</span>
+                    </Show>
                   </td>
                   <td data-label={t("expenses.reimbursement")}>
                     <Show when={e.reimbursement === "reimbursed"}>
                       <span class="chip chip-pos">{t("expenses.status_reimbursed")}</span>
                     </Show>
                     <Show when={e.reimbursement === "pending"}>
-                      <span class="cell-actions">
-                        <span class="chip chip-pending">{t("expenses.status_pending")}</span>
-                        <Show when={me().canReimburse}>
-                          <form action={reimburseExpense} method="post" class="inline-form">
+                      <span class="chip chip-pending">{t("expenses.status_pending")}</span>
+                    </Show>
+                  </td>
+                  <td data-label={t("expenses.receipt")}>
+                    <Show when={e.receiptUrl} fallback={<span class="note-faint">—</span>}>
+                      <a href={`/api/receipt?id=${e.id}`} target="_blank" rel="noopener">
+                        {t("expenses.receipt")}
+                      </a>
+                    </Show>
+                  </td>
+                  {/* Per-row action menu: edit + the contextual reimburse/settle actions. */}
+                  <td class="col-actions" data-label={t("common.actions")}>
+                    <details class="row-menu">
+                      <summary aria-label={t("common.actions")}>⋯</summary>
+                      <div class="menu-pop">
+                        <button
+                          type="button"
+                          class="menu-item"
+                          onClick={(ev) => {
+                            editSub.clear?.(); // fresh modal — no stale error banner
+                            setEditing(e);
+                            ev.currentTarget.closest("details")?.removeAttribute("open");
+                          }}
+                        >
+                          {t("common.edit")}
+                        </button>
+                        <Show when={e.reimbursement === "pending" && me().canReimburse}>
+                          <form action={reimburseExpense} method="post">
                             <input type="hidden" name="id" value={e.id} />
                             <button
                               type="submit"
+                              class="menu-item"
                               disabled={pendingId(reSub) === e.id}
                               onClick={(ev) => {
                                 if (!confirm(t("expenses.confirmReimburse"))) ev.preventDefault();
@@ -461,36 +602,32 @@ export default function Expenses() {
                             </button>
                           </form>
                         </Show>
-                      </span>
-                    </Show>
-                    {/* EX-12: an owner fronted this — offer to repay them from the Caja. */}
-                    <Show
-                      when={
-                        e.reimbursement === "not_applicable" && e.payerIsOwner && me().canReimburse
-                      }
-                    >
-                      <form action={settleExpenseAction} method="post" class="inline-form">
-                        <input type="hidden" name="id" value={e.id} />
-                        <button
-                          type="submit"
-                          disabled={pendingId(settleSub) === e.id}
-                          onClick={(ev) => {
-                            if (!confirm(t("expenses.confirmSettle"))) ev.preventDefault();
-                          }}
+                        {/* EX-12: an owner fronted this — offer to repay them from the Caja. */}
+                        <Show
+                          when={
+                            e.reimbursement === "not_applicable" &&
+                            e.payerIsOwner &&
+                            me().canReimburse
+                          }
                         >
-                          {pendingId(settleSub) === e.id
-                            ? t("common.saving")
-                            : t("expenses.settle")}
-                        </button>
-                      </form>
-                    </Show>
-                  </td>
-                  <td data-label={t("expenses.receipt")}>
-                    <Show when={e.receiptUrl} fallback={<span class="note-faint">—</span>}>
-                      <a href={`/api/receipt?id=${e.id}`} target="_blank" rel="noopener">
-                        {t("expenses.receipt")}
-                      </a>
-                    </Show>
+                          <form action={settleExpenseAction} method="post">
+                            <input type="hidden" name="id" value={e.id} />
+                            <button
+                              type="submit"
+                              class="menu-item"
+                              disabled={pendingId(settleSub) === e.id}
+                              onClick={(ev) => {
+                                if (!confirm(t("expenses.confirmSettle"))) ev.preventDefault();
+                              }}
+                            >
+                              {pendingId(settleSub) === e.id
+                                ? t("common.saving")
+                                : t("expenses.settle")}
+                            </button>
+                          </form>
+                        </Show>
+                      </div>
+                    </details>
                   </td>
                 </tr>
               )}

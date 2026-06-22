@@ -20,6 +20,8 @@ export const en = {
     close: "Close",
     saved: "Saved.",
     manualRate: "Manual rate",
+    actions: "Actions",
+    edit: "Edit",
   },
   fx: {
     noRate: "No BNA rate for this date — a manual rate will be required.",
@@ -134,6 +136,7 @@ export const en = {
   },
   expenses: {
     add: "Add expense",
+    editTitle: "Edit expense",
     detail: "Detail",
     category: "Category",
     supplier: "Supplier",
@@ -146,6 +149,7 @@ export const en = {
     unassigned: "Unassigned",
     unattributed: "{count} expenses ({total} €) unattributed — assign a payer to include them.",
     reimbursement: "Reimbursement",
+    rateHint: "BNA rate — ARS per €1",
     status_pending: "Pending",
     status_reimbursed: "Reimbursed",
     reimburse: "Reimburse",
@@ -216,5 +220,6 @@ export const en = {
     locale: "Default locale",
     backup: "Backup cadence",
     saved: "Saved.",
+    commissionInvalid: "Commission must be a number between 0 and 100.",
   },
 };

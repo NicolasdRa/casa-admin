@@ -364,14 +364,109 @@ tr.total td {
   width: 100%;
 }
 
-/* Inline row-action forms inside dense table cells. */
-.cell-actions {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
+/* Visually hidden but available to screen readers (e.g. the actions-column header). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
-.inline-form {
-  display: inline;
+
+/* Per-row three-dot action menu, built on native <details> (Esc/click-to-toggle for free). */
+.col-actions {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+.row-menu {
+  position: relative;
+  display: inline-block;
+}
+/* The ⋯ trigger reads as a real button — bordered, ink-dark glyph, navy on hover/open. */
+.row-menu > summary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  list-style: none;
+  cursor: pointer;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  color: var(--ink);
+  background: var(--surface);
+  font-size: 1.25rem;
+  line-height: 1;
+  user-select: none;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+.row-menu > summary::-webkit-details-marker {
+  display: none;
+}
+.row-menu > summary::marker {
+  content: "";
+}
+.row-menu > summary:hover,
+.row-menu[open] > summary {
+  background: var(--surface-inset);
+  border-color: var(--navy);
+  color: var(--navy);
+}
+.menu-pop {
+  position: absolute;
+  right: 0;
+  z-index: var(--z-pop);
+  min-width: 10rem;
+  margin-top: var(--u);
+  padding: var(--u);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgb(15 23 42 / 0.18);
+}
+.menu-pop form {
+  display: block;
+}
+.menu-item {
+  width: 100%;
+  text-align: left;
+  justify-content: flex-start;
+  background: var(--surface);
+  border: none;
+  color: var(--ink);
+  font-weight: 500;
+  padding: 9px 12px;
+  box-shadow: none;
+}
+.menu-item:hover:not(:disabled) {
+  background: var(--surface-inset);
+  color: var(--navy);
+  box-shadow: none;
+}
+
+/* Desktop: stop long column headers from forcing wide columns — truncate the label so the
+   column shrinks to its data. Full text stays in the th `title`; mobile shows it via data-label. */
+@media (min-width: 641px) {
+  table.cards thead th {
+    max-width: 7rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  table.cards thead th.num,
+  table.cards thead th.col-actions {
+    max-width: none;
+  }
 }
 
 /* On a phone the group dividers and bottom-alignment make no sense — let fields fill the width. */
@@ -598,9 +693,9 @@ tr.total td {
   min-width: 0; /* let tables shrink/scroll instead of blowing out the grid */
 }
 .app-content {
-  max-width: 72rem;
+  max-width: 80rem;
   margin: 0 auto;
-  padding: 28px 28px 64px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -860,21 +955,21 @@ tr.total td {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 /* In the modal the entry form stacks vertically instead of acting as a wide toolbar. */
 .modal .entry-form {
   align-items: stretch;
   flex-direction: column;
-  row-gap: 14px;
+  row-gap: 10px;
 }
 .modal .entry-form .tb-group + .tb-group {
   padding-left: 0;
   border-left: none;
 }
 .modal .entry-form .tb-field {
-  flex: 1 1 8rem;
+  flex: none;
 }
 .modal .entry-form .tb-field.tb-grow {
   flex-basis: 100%;

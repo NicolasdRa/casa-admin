@@ -1,18 +1,22 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  createCategory,
   createExpense,
   expenseTotalsByUser,
   getExpenseById,
   listExpenses,
+  listExpensesWithPayer,
   markExpenseReimbursed,
   receiptPlan,
   reimbursementStatus,
   safeExt,
   setExpenseReceipt,
+  updateExpenseMeta,
 } from "./expenses.ts";
 import { upsertFxRate } from "./fx.ts";
 import { createPartner } from "./partners.ts";
+import { createSupplier } from "./suppliers.ts";
 import { makeTestDb } from "./testdb.ts";
 import { createUser, getUserById } from "./users.ts";
 
@@ -186,4 +190,82 @@ test("markExpenseReimbursed rejects a reimburser who is not an owner (EX-9)", ()
   });
   // co-host has no partner mapping -> cannot be the reimburser
   assert.throws(() => markExpenseReimbursed(db, e.id, cohost.id, "2026-06-20"));
+});
+
+test("updateExpenseMeta edits classification and leaves the money/FX snapshot intact", () => {
+  const db = dbWithRates();
+  const gas = createSupplier(db, "Gas Co");
+  const cat = createCategory(db, { name: "Utilities", group: "services" });
+  const e = createExpense(db, {
+    date: "2026-06-18",
+    currency: "ARS",
+    amount: 5250000,
+    detail: "old",
+  });
+  updateExpenseMeta(db, e.id, { detail: "new", categoryId: cat.id, supplierId: gas.id });
+  const updated = getExpenseById(db, e.id);
+  assert.equal(updated?.detail, "new");
+  assert.equal(updated?.categoryId, cat.id);
+  assert.equal(updated?.supplierId, gas.id);
+  // immutable snapshot untouched by a metadata edit
+  assert.equal(updated?.amountArs, 5250000);
+  assert.equal(updated?.amountEur, 5000);
+  assert.equal(updated?.fxRate, 1050);
+  // each field clears back to null
+  updateExpenseMeta(db, e.id, { detail: null, categoryId: null, supplierId: null });
+  const cleared = getExpenseById(db, e.id);
+  assert.equal(cleared?.detail, null);
+  assert.equal(cleared?.categoryId, null);
+  assert.equal(cleared?.supplierId, null);
+});
+
+test("updateExpenseMeta can (re)assign or clear the payer (fixes unattributed rows)", () => {
+  const { db, owner } = dbWithOwnerAndCohost();
+  const e = createExpense(db, { date: "2026-06-18", currency: "EUR", amount: 5000 }); // null payer
+  assert.equal(getExpenseById(db, e.id)?.paidByUserId, null);
+  updateExpenseMeta(db, e.id, {
+    detail: null,
+    categoryId: null,
+    supplierId: null,
+    paidByUserId: owner.id,
+  });
+  assert.equal(getExpenseById(db, e.id)?.paidByUserId, owner.id);
+  // and back to unattributed
+  updateExpenseMeta(db, e.id, {
+    detail: null,
+    categoryId: null,
+    supplierId: null,
+    paidByUserId: null,
+  });
+  assert.equal(getExpenseById(db, e.id)?.paidByUserId, null);
+});
+
+test("updateExpenseMeta leaves the payer untouched when paidByUserId is omitted", () => {
+  const { db, owner } = dbWithOwnerAndCohost();
+  const e = createExpense(db, {
+    date: "2026-06-18",
+    currency: "EUR",
+    amount: 5000,
+    paidByUserId: owner.id,
+  });
+  updateExpenseMeta(db, e.id, { detail: "edited", categoryId: null, supplierId: null });
+  const row = getExpenseById(db, e.id);
+  assert.equal(row?.detail, "edited");
+  assert.equal(row?.paidByUserId, owner.id); // not wiped by a classification-only edit
+});
+
+test("listExpensesWithPayer carries the raw supplierId for the inline picker", () => {
+  const db = dbWithRates();
+  const gas = createSupplier(db, "Gas Co");
+  createExpense(db, {
+    date: "2026-06-18",
+    currency: "EUR",
+    amount: 5000,
+    supplierId: gas.id,
+    detail: "with supplier",
+  });
+  createExpense(db, { date: "2026-06-18", currency: "EUR", amount: 5000, detail: "no supplier" });
+  const rows = listExpensesWithPayer(db);
+  assert.equal(rows.find((r) => r.detail === "with supplier")?.supplierId, gas.id);
+  assert.equal(rows.find((r) => r.detail === "no supplier")?.supplierId, null);
 });

@@ -20,6 +20,8 @@ export const es = {
     close: "Cerrar",
     saved: "Guardado.",
     manualRate: "Cambio manual",
+    actions: "Acciones",
+    edit: "Editar",
   },
   fx: {
     noRate: "Sin cambio BNA para esta fecha — se requerirá un cambio manual.",
@@ -134,6 +136,7 @@ export const es = {
   },
   expenses: {
     add: "Agregar gasto",
+    editTitle: "Editar gasto",
     detail: "Detalle",
     category: "Categoría",
     supplier: "Proveedor",
@@ -146,6 +149,7 @@ export const es = {
     unassigned: "Sin asignar",
     unattributed: "{count} gastos ({total} €) sin asignar — asigná un pagador para incluirlos.",
     reimbursement: "Reembolso",
+    rateHint: "Cotización BNA — ARS por 1 €",
     status_pending: "Pendiente",
     status_reimbursed: "Reembolsado",
     reimburse: "Reembolsar",
@@ -216,5 +220,6 @@ export const es = {
     locale: "Idioma por defecto",
     backup: "Frecuencia de respaldo",
     saved: "Guardado.",
+    commissionInvalid: "La comisión debe ser un número entre 0 y 100.",
   },
 };

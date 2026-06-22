@@ -81,6 +81,37 @@ export function setExpenseReceipt(db: Db, id: number, receiptUrl: string) {
   return row;
 }
 
+/**
+ * Edit an expense's classification (detail / category / supplier), each clearable with null.
+ * Money, currency, date and the FX snapshot are entered once and intentionally NOT editable here —
+ * mutating them would break the immutable-snapshot invariant.
+ */
+export function updateExpenseMeta(
+  db: Db,
+  id: number,
+  input: {
+    detail: string | null;
+    categoryId: number | null;
+    supplierId: number | null;
+    // EX-8: (re)attribute the payer — including fixing imported/unattributed rows. Omit to leave
+    // the payer untouched (a classification-only edit); pass null to clear back to unattributed.
+    paidByUserId?: number | null;
+  },
+) {
+  const [row] = db
+    .update(schema.expenses)
+    .set({
+      detail: input.detail,
+      categoryId: input.categoryId,
+      supplierId: input.supplierId,
+      ...(input.paidByUserId !== undefined ? { paidByUserId: input.paidByUserId } : {}),
+    })
+    .where(eq(schema.expenses.id, id))
+    .returning()
+    .all();
+  return row;
+}
+
 export const CATEGORY_GROUPS = [
   "operating",
   "equipment",
@@ -117,7 +148,9 @@ export function expenseTotalsByUser(db: Db) {
   }));
 }
 
-/** EX-10: expenses enriched with payer name + reimbursement status for the list view. */
+/** EX-10: expenses enriched with payer name + reimbursement status for the list view.
+ *  Supplier is edited inline in the ledger (a per-row select keyed on `supplierId`), so the
+ *  list keeps the raw `supplierId` rather than resolving a name here. */
 export function listExpensesWithPayer(db: Db) {
   const byId = new Map(listUsers(db).map((u) => [u.id, u]));
   return listExpenses(db).map((e) => {
