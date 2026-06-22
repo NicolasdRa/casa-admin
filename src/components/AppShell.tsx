@@ -124,9 +124,6 @@ export function AppShell(props: { children: JSX.Element }) {
               {locale() === "es" ? "EN" : "ES"}
             </button>
             <Show when={user()}>
-              <A href="/security" class="btn-ghost">
-                {t("security.title")}
-              </A>
               <form action={logoutAction} method="post" style={{ flex: 1, display: "flex" }}>
                 <button type="submit" disabled={loggingOut.pending} style={{ flex: 1 }}>
                   {t("auth.logout")}
@@ -209,9 +206,6 @@ export function AppShell(props: { children: JSX.Element }) {
               {locale() === "es" ? "EN" : "ES"}
             </button>
             <Show when={user()}>
-              <A href="/security" class="btn-ghost" onClick={closeSheet}>
-                {t("security.title")}
-              </A>
               <form action={logoutAction} method="post">
                 <button type="submit" disabled={loggingOut.pending}>
                   {t("auth.logout")}

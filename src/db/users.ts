@@ -65,14 +65,3 @@ export function setPassword(db: Db, id: number, passwordHash: string) {
     .all();
   return row;
 }
-
-/** CA-23: set or clear (null) a user's TOTP secret. */
-export function setTotpSecret(db: Db, id: number, totpSecret: string | null) {
-  const [row] = db
-    .update(schema.users)
-    .set({ totpSecret })
-    .where(eq(schema.users.id, id))
-    .returning()
-    .all();
-  return row;
-}
