@@ -106,6 +106,7 @@ export const en = {
   },
   occupancy: {
     title: "Occupancy",
+    nights: "{{n}} nights",
   },
   audit: {
     title: "Audit log",

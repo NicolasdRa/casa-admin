@@ -78,6 +78,7 @@ export function createBooking(db: Db, input: NewBooking) {
 
 export interface MonthOccupancy {
   month: string; // "YYYY-MM"
+  nights: number; // nights booked, attributed to the check-in month
   bookings: { date: string; checkOut: string | null; guest: string; channel: string }[];
 }
 
@@ -102,6 +103,12 @@ export function occupancyByMonth(
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([month, bookings]) => ({
       month,
+      // ponytail: nights credited to the check-in month; a stay spanning a boundary
+      // still counts wholly here. Split per calendar month only if cross-month % matters.
+      nights: bookings.reduce(
+        (n, b) => n + (b.checkOut ? (Date.parse(b.checkOut) - Date.parse(b.date)) / 86_400_000 : 0),
+        0,
+      ),
       bookings: bookings.sort((x, y) => x.date.localeCompare(y.date)),
     }));
 }

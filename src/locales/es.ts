@@ -107,6 +107,7 @@ export const es = {
   },
   occupancy: {
     title: "Ocupación",
+    nights: "{{n}} noches",
   },
   audit: {
     title: "Auditoría",

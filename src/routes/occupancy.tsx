@@ -12,6 +12,12 @@ const occupancyQuery = query(async () => {
   return occupancyByMonth(listBookings(db));
 }, "occupancy");
 
+// % of the month's nights that were booked. daysInMonth via day-0 of the next month.
+function occupancyPct(month: string, nights: number) {
+  const [y, m] = month.split("-").map(Number);
+  return Math.round((nights / new Date(y, m, 0).getDate()) * 100);
+}
+
 export default function Occupancy() {
   const { t } = useI18n();
   const months = createAsync(() => occupancyQuery(), { initialValue: [] });
@@ -28,6 +34,9 @@ export default function Occupancy() {
           <section class="panel">
             <div class="panel-head">
               <h2>{m.month}</h2>
+              <span class="note">
+                {t("occupancy.nights", { n: m.nights })} · {occupancyPct(m.month, m.nights)}%
+              </span>
             </div>
             <table>
               <tbody>

@@ -177,6 +177,16 @@ test("occupancyByMonth groups by month, excludes cancellations, sorts chronologi
   assert.ok(!r.some((m) => m.bookings.some((b) => b.guest === "X"))); // cancellation excluded
 });
 
+test("occupancyByMonth sums nights per month from check-out (BK-6)", () => {
+  const r = occupancyByMonth([
+    { date: "2026-06-05", checkOut: "2026-06-08", guest: "A", type: "booking" }, // 3 nights
+    { date: "2026-06-20", checkOut: "2026-06-22", guest: "C", type: "booking" }, // 2 nights
+    { date: "2026-06-12", guest: "B", type: "booking" }, // legacy, no check-out → 0
+  ]);
+  assert.equal(r[0].month, "2026-06");
+  assert.equal(r[0].nights, 5);
+});
+
 test("createBooking defaults channel to direct", () => {
   const db = dbWithRates();
   const b = createBooking(db, { guest: "D", date: "2026-06-18", currency: "EUR", amount: 100 });
