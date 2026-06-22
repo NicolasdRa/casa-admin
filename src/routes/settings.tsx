@@ -2,7 +2,7 @@ import { action, createAsync, query, redirect, useSubmission } from "@solidjs/ro
 import { Show } from "solid-js";
 import { AppShell } from "~/components/AppShell";
 import { db } from "~/db/index";
-import { getSettings, type SettingsPatch, updateSettings } from "~/db/settings";
+import { getSettings, parseSettings, updateSettings } from "~/db/settings";
 import { useI18n } from "~/lib/i18n";
 import { can } from "~/lib/permissions";
 import { currentUser, recordAudit } from "~/lib/session";
@@ -22,16 +22,9 @@ const settingsQuery = query(async () => {
 const saveSettings = action(async (form: FormData) => {
   "use server";
   await requireManageSettings();
-  const patch: SettingsPatch = {};
-  const pct = Number(form.get("commissionPct"));
-  if (Number.isFinite(pct) && pct >= 0 && pct <= 100) patch.commissionRate = pct / 100;
-  const locale = form.get("defaultLocale");
-  if (locale === "es" || locale === "en") patch.defaultLocale = locale;
-  const fxSource = String(form.get("fxSource") ?? "").trim();
-  if (fxSource) patch.fxSource = fxSource;
-  const backup = String(form.get("backupCadence") ?? "").trim();
-  if (backup) patch.backupCadence = backup;
-  updateSettings(db, patch);
+  const parsed = parseSettings(form);
+  if ("error" in parsed) return { error: parsed.error };
+  updateSettings(db, parsed.patch);
   await recordAudit("update", "settings");
   return { ok: true };
 }, "saveSettings");
@@ -89,11 +82,18 @@ export default function Settings() {
                 "margin-top": "16px",
               }}
             >
-              <button type="submit">{t("common.save")}</button>
+              <button type="submit" disabled={saving.pending}>
+                {saving.pending ? t("common.saving") : t("common.save")}
+              </button>
               <Show when={saving.result?.ok}>
                 <span class="saved">{t("settings.saved")}</span>
               </Show>
             </div>
+            <Show when={saving.result?.error}>
+              <p class="alert alert-error" role="alert" style={{ "margin-top": "12px" }}>
+                {t("settings.commissionInvalid")}
+              </p>
+            </Show>
           </form>
         )}
       </Show>
