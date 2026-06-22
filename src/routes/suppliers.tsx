@@ -7,6 +7,18 @@ import { createSupplier, deleteSupplier, listSuppliers, renameSupplier } from "~
 import { useI18n } from "~/lib/i18n";
 import { recordAudit, requireUser } from "~/lib/session";
 
+// Map a thrown supplier error to a stable i18n suffix (suppliers.err_*) — raw exception text
+// never reaches the user.
+const SUPPLIER_ERROR_PREFIXES: [string, string][] = [
+  ["supplier name required", "nameRequired"],
+  ["already exists", "duplicate"],
+  ["in use", "inUse"],
+];
+function supplierErrorCode(e: unknown): string {
+  const m = e instanceof Error ? e.message : String(e);
+  return SUPPLIER_ERROR_PREFIXES.find(([k]) => m.includes(k))?.[1] ?? "generic";
+}
+
 const listSuppliersQuery = query(async () => {
   "use server";
   await requireUser();
@@ -20,7 +32,7 @@ const addSupplier = action(async (form: FormData) => {
   try {
     createSupplier(db, name);
   } catch (e) {
-    return { error: (e as Error).message };
+    return { error: supplierErrorCode(e) };
   }
   await recordAudit("create", "supplier");
   return { ok: true };
@@ -34,7 +46,7 @@ const editSupplier = action(async (form: FormData) => {
   try {
     renameSupplier(db, id, name);
   } catch (e) {
-    return { error: (e as Error).message };
+    return { error: supplierErrorCode(e) };
   }
   await recordAudit("update", "supplier");
   return { ok: true };
@@ -47,7 +59,7 @@ const removeSupplier = action(async (form: FormData) => {
   try {
     deleteSupplier(db, id);
   } catch (e) {
-    return { error: (e as Error).message };
+    return { error: supplierErrorCode(e) };
   }
   await recordAudit("delete", "supplier");
   return { ok: true };
@@ -61,6 +73,7 @@ export default function Suppliers() {
   const adding = useSubmission(addSupplier);
   const editing = useSubmission(editSupplier);
   const removing = useSubmission(removeSupplier);
+  const errMsg = (code: string) => t(`suppliers.err_${code}` as Parameters<typeof t>[0]) as string;
   const [formOpen, setFormOpen] = createSignal(false);
   let formEl: HTMLFormElement | undefined;
   createEffect(() => {
@@ -104,14 +117,18 @@ export default function Suppliers() {
         <Show when={adding.result?.error}>
           {(err) => (
             <p class="alert alert-error" role="alert">
-              {err()}
+              {errMsg(err())}
             </p>
           )}
         </Show>
       </Modal>
 
       <Show when={editing.result?.error ?? removing.result?.error}>
-        {(err) => <p class="alert alert-error">{err()}</p>}
+        {(err) => (
+          <p class="alert alert-error" role="alert">
+            {errMsg(err())}
+          </p>
+        )}
       </Show>
 
       <div class="panel table-scroll">

@@ -70,6 +70,8 @@ export default function Users() {
   const users = createAsync(() => usersQuery(), { initialValue: [] });
   const adding = useSubmission(addUser);
   const editing = useSubmission(editUser);
+  // Map a returned code (incl. the specific userEditError reasons) to a localized message.
+  const errMsg = (code: string) => t(`users.err_${code}` as Parameters<typeof t>[0]) as string;
   const roles: Role[] = ["superadmin", "admin", "user"];
   const [formOpen, setFormOpen] = createSignal(false);
   let formEl: HTMLFormElement | undefined;
@@ -133,13 +135,19 @@ export default function Users() {
           </p>
         </Show>
         <Show when={adding.result?.error}>
-          <p class="alert alert-error" role="alert">
-            {t("users.addError")}
-          </p>
+          {(err) => (
+            <p class="alert alert-error" role="alert">
+              {errMsg(err())}
+            </p>
+          )}
         </Show>
       </Modal>
       <Show when={editing.result?.error}>
-        <p class="alert alert-error">{t("users.editError")}</p>
+        {(err) => (
+          <p class="alert alert-error" role="alert">
+            {errMsg(err())}
+          </p>
+        )}
       </Show>
 
       <div class="panel table-scroll">

@@ -40,6 +40,22 @@ const listBookingsQuery = query(async (filter: Filter) => {
   return listBookings(db, filter);
 }, "bookings");
 
+// Map a thrown message to a stable i18n suffix (bookings.err_*) — raw exception text never reaches
+// the user. Prefix table (not an if-chain) keeps cyclomatic complexity under the Codacy gate.
+const BOOKING_ERROR_PREFIXES: [string, string][] = [
+  ["No FX rate", "fxNoRate"],
+  ["check-out", "checkOutBeforeCheckIn"],
+  ["manual rate", "manualRateInvalid"],
+  ["invalid date", "dateInvalid"],
+  ["invalid currency", "currencyInvalid"],
+  ["invalid channel", "channelInvalid"],
+  ["invalid amount", "amountInvalid"],
+];
+function bookingErrorCode(e: unknown): string {
+  const m = e instanceof Error ? e.message : String(e);
+  return BOOKING_ERROR_PREFIXES.find(([prefix]) => m.startsWith(prefix))?.[1] ?? "generic";
+}
+
 const addBooking = action(async (form: FormData) => {
   "use server";
   await requireUser();
@@ -54,9 +70,9 @@ const addBooking = action(async (form: FormData) => {
   const channel = channelRaw === "booking" || channelRaw === "airbnb" ? channelRaw : "direct";
   const manualRaw = Number(form.get("manualRate"));
   const manualRate = Number.isFinite(manualRaw) && manualRaw > 0 ? manualRaw : undefined;
-  if (!guest) return { error: "guest_required" };
-  if (!date) return { error: "date_required" };
-  if (!Number.isFinite(amount) || amount <= 0) return { error: "amount_invalid" };
+  if (!guest) return { error: "guestRequired" };
+  if (!date) return { error: "dateRequired" };
+  if (!Number.isFinite(amount) || amount <= 0) return { error: "amountInvalid" };
   try {
     createBooking(db, {
       guest,
@@ -69,7 +85,7 @@ const addBooking = action(async (form: FormData) => {
       manualRate,
     });
   } catch (e) {
-    return { error: (e as Error).message };
+    return { error: bookingErrorCode(e) };
   }
   return { ok: true };
 }, "addBooking");
@@ -110,6 +126,8 @@ export default function Bookings() {
   const submission = useSubmission(addBooking);
   const money = (cents: number) => fromCents(cents).toFixed(2);
   const channelLabel = (c: BookingChannel) => t(bookingChannelKey[c]);
+  // Translate a returned error code to a localized message; raw codes never render.
+  const errMsg = (code: string) => t(`bookings.err_${code}` as Parameters<typeof t>[0]) as string;
   const [formOpen, setFormOpen] = createSignal(false);
   let formEl: HTMLFormElement | undefined;
   createEffect(() => {
@@ -222,7 +240,7 @@ export default function Bookings() {
         <Show when={submission.result?.error}>
           {(err) => (
             <p class="alert alert-error" role="alert">
-              {err()}
+              {errMsg(err())}
             </p>
           )}
         </Show>

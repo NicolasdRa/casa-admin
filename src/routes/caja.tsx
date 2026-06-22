@@ -134,7 +134,7 @@ export default function Caja() {
         </Show>
         <Show when={adding.result?.error}>
           <p class="alert alert-error" role="alert">
-            {t("maintenance.invalid")}
+            {t("caja.err_invalid")}
           </p>
         </Show>
       </Modal>
