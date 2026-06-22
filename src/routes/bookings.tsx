@@ -277,14 +277,11 @@ export default function Bookings() {
               <th>{t("bookings.guest")}</th>
               <th>{t("bookings.channel")}</th>
               <th class="num">EUR</th>
-              {/* <th class="num">ARS</th>
-              <th class="num">{t("common.rate")}</th>
-              <th>{t("common.rateDate")}</th> */}
               <th class="num">{t("bookings.commission")}</th>
             </tr>
           </thead>
           <tbody>
-            <For each={bookings()} fallback={<EmptyRow cols={9} text={t("bookings.empty")} />}>
+            <For each={bookings()} fallback={<EmptyRow cols={6} text={t("bookings.empty")} />}>
               {(b) => (
                 <tr>
                   <td>{b.date}</td>
@@ -296,13 +293,6 @@ export default function Bookings() {
                   <td class="num" data-label="EUR">
                     {money(b.amountEur)}
                   </td>
-                  {/* <td class="num" data-label="ARS">
-                    {money(b.amountArs)}
-                  </td>
-                  <td class="num" data-label={t("common.rate")}>
-                    {b.fxRate}
-                  </td>
-                  <td data-label={t("common.rateDate")}>{b.fxRateDate}</td> */}
                   <td class="num" data-label={t("bookings.commission")}>
                     {money(b.commissionEur)}
                   </td>
@@ -325,7 +315,6 @@ export default function Bookings() {
                   <th>{t("bookings.year")}</th>
                   <th class="num">{t("bookings.count")}</th>
                   <th class="num">EUR</th>
-                  {/* <th class="num">ARS</th> */}
                   <th class="num">{t("bookings.commission")}</th>
                 </tr>
               </thead>
@@ -336,7 +325,6 @@ export default function Bookings() {
                       <td>{y.year}</td>
                       <td class="num">{y.count}</td>
                       <td class="num">{money(y.incomeEur)}</td>
-                      {/* <td class="num">{money(y.incomeArs)}</td> */}
                       <td class="num">{money(y.commissionEur)}</td>
                     </tr>
                   )}
@@ -345,7 +333,6 @@ export default function Bookings() {
                   <td>{t("bookings.total")}</td>
                   <td class="num">{summary().total.count}</td>
                   <td class="num">{money(summary().total.incomeEur)}</td>
-                  {/* <td class="num">{money(summary().total.incomeArs)}</td> */}
                   <td class="num">{money(summary().total.commissionEur)}</td>
                 </tr>
               </tbody>

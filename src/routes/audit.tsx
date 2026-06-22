@@ -21,6 +21,15 @@ const auditQuery = query(async () => {
   }));
 }, "auditLog");
 
+// Color the action by what it did, not "pending" for all: created (added) reads
+// green, deleted (removed) reads rose, everything else stays a neutral label.
+const actionChip = (action: string) =>
+  action === "create"
+    ? "chip chip-pos"
+    : action === "delete"
+      ? "chip chip-neg"
+      : "chip chip-neutral";
+
 export default function Audit() {
   const { t } = useI18n();
   const log = createAsync(() => auditQuery(), { initialValue: [] });
@@ -58,7 +67,7 @@ export default function Audit() {
                   <td class="mono">{e.when}</td>
                   <td>{e.who}</td>
                   <td>
-                    <span class="chip chip-pending">{e.action}</span>
+                    <span class={actionChip(e.action)}>{e.action}</span>
                   </td>
                   <td class="mono">{e.entity}</td>
                 </tr>

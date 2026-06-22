@@ -258,9 +258,7 @@ export default function Reports() {
                         <tr>
                           <td>{e.date}</td>
                           <td data-label={t("expenses.detail")}>
-                            <span
-                              class={e.kind === "booking" ? "chip chip-pos" : "chip chip-pending"}
-                            >
+                            <span class={e.kind === "booking" ? "chip chip-pos" : "chip chip-neg"}>
                               {e.kind === "booking" ? t("nav.bookings") : t("nav.expenses")}
                             </span>{" "}
                             {e.detail}

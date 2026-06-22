@@ -508,6 +508,12 @@ tr.total td {
   color: var(--warn);
   background: var(--warn-bg);
 }
+/* Neutral label chip — for category/kind tags that carry no status meaning,
+   so amber "pending" isn't borrowed to mean "this is an expense" etc. */
+.chip-neutral {
+  color: var(--muted);
+  background: var(--surface-inset);
+}
 
 /* ─── Messages ──────────────────────────────────────────────── */
 
