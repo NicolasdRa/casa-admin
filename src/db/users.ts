@@ -54,6 +54,18 @@ export function updateUser(db: Db, id: number, patch: UserPatch) {
   return row;
 }
 
+/** Reset a user's password. Credential mutation kept separate from the role/status patch so a
+ *  password hash can never be set through the general UserPatch path. Caller hashes first. */
+export function setPassword(db: Db, id: number, passwordHash: string) {
+  const [row] = db
+    .update(schema.users)
+    .set({ passwordHash })
+    .where(eq(schema.users.id, id))
+    .returning()
+    .all();
+  return row;
+}
+
 /** CA-23: set or clear (null) a user's TOTP secret. */
 export function setTotpSecret(db: Db, id: number, totpSecret: string | null) {
   const [row] = db

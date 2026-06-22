@@ -3,7 +3,7 @@ import { createEffect, createSignal, For, Show } from "solid-js";
 import { AppShell } from "~/components/AppShell";
 import { Modal } from "~/components/Modal";
 import { db } from "~/db/index";
-import { createUser, getUserById, listUsers, updateUser } from "~/db/users";
+import { createUser, getUserById, listUsers, setPassword, updateUser } from "~/db/users";
 import { useI18n } from "~/lib/i18n";
 import { hashPassword } from "~/lib/password";
 import { can, type Role, userEditError } from "~/lib/permissions";
@@ -65,18 +65,40 @@ const editUser = action(async (form: FormData) => {
   return { ok: true };
 }, "editUser");
 
+// Reset a user's password. manageUsers is superadmin-only, so the actor is always a peer with the
+// authority to do this; the only check is a minimum length. The hash never round-trips to the client.
+const resetPassword = action(async (form: FormData) => {
+  "use server";
+  await requireManageUsers();
+  const id = Number(form.get("id"));
+  const password = String(form.get("password") ?? "");
+  if (password.length < 8) return { error: "passwordShort" };
+  const target = getUserById(db, id);
+  if (!target) return { error: "notfound" };
+  setPassword(db, id, hashPassword(password));
+  await recordAudit("update", `user:${id}:password`);
+  return { ok: true };
+}, "resetPassword");
+
 export default function Users() {
   const { t } = useI18n();
   const users = createAsync(() => usersQuery(), { initialValue: [] });
   const adding = useSubmission(addUser);
   const editing = useSubmission(editUser);
+  const resetting = useSubmission(resetPassword);
   // Map a returned code (incl. the specific userEditError reasons) to a localized message.
   const errMsg = (code: string) => t(`users.err_${code}` as Parameters<typeof t>[0]) as string;
   const roles: Role[] = ["superadmin", "admin", "user"];
   const [formOpen, setFormOpen] = createSignal(false);
+  // The user whose password-reset modal is open (null = closed).
+  const [resetUser, setResetUser] = createSignal<{ id: number; name: string } | null>(null);
   let formEl: HTMLFormElement | undefined;
   createEffect(() => {
     if (adding.result?.ok) formEl?.reset();
+  });
+  // Close the reset modal once its submission lands.
+  createEffect(() => {
+    if (resetting.result?.ok) setResetUser(null);
   });
 
   return (
@@ -142,12 +164,53 @@ export default function Users() {
           )}
         </Show>
       </Modal>
+      {/* Password reset — a modal so credential entry isn't inline row noise. */}
+      <Modal
+        open={resetUser() != null}
+        onClose={() => setResetUser(null)}
+        title={t("users.resetPassword")}
+      >
+        <Show when={resetUser()}>
+          {(u) => (
+            <form action={resetPassword} method="post" class="toolbar entry-form">
+              <input type="hidden" name="id" value={u().id} />
+              <p class="note-faint">{u().name}</p>
+              <label class="tb-field tb-grow">
+                <span>{t("users.newPassword")}</span>
+                <input
+                  type="password"
+                  name="password"
+                  required
+                  minlength="8"
+                  autocomplete="new-password"
+                />
+              </label>
+              <button type="submit" disabled={resetting.pending}>
+                {resetting.pending ? t("common.saving") : t("users.resetPassword")}
+              </button>
+              <Show when={resetting.result?.error}>
+                {(err) => (
+                  <p class="alert alert-error" role="alert">
+                    {errMsg(err())}
+                  </p>
+                )}
+              </Show>
+            </form>
+          )}
+        </Show>
+      </Modal>
+
       <Show when={editing.result?.error}>
         {(err) => (
           <p class="alert alert-error" role="alert">
             {errMsg(err())}
           </p>
         )}
+      </Show>
+      <Show when={editing.result?.ok || resetting.result?.ok}>
+        <p class="alert alert-success" role="status">
+          {t("common.saved")}
+        </p>
       </Show>
 
       <div class="panel table-scroll">
@@ -163,39 +226,63 @@ export default function Users() {
           </thead>
           <tbody>
             <For each={users()}>
-              {(u) => (
-                <tr>
-                  <td>{u.name}</td>
-                  <td>{u.email}</td>
-                  <td colspan="3">
-                    <form
-                      action={editUser}
-                      method="post"
-                      style={{ display: "flex", gap: "8px", "flex-wrap": "wrap" }}
-                    >
-                      <input type="hidden" name="id" value={u.id} />
-                      <select name="role">
-                        <For each={roles}>
-                          {(r) => (
-                            <option value={r} selected={r === u.role}>
-                              {t(`users.role_${r}`)}
-                            </option>
-                          )}
-                        </For>
-                      </select>
-                      <select name="status">
-                        <option value="active" selected={u.status === "active"}>
-                          {t("users.active")}
-                        </option>
-                        <option value="disabled" selected={u.status === "disabled"}>
-                          {t("users.disabled")}
-                        </option>
-                      </select>
-                      <button type="submit">{t("common.save")}</button>
-                    </form>
-                  </td>
-                </tr>
-              )}
+              {(u) => {
+                // Save stays dimmed until role/status actually changes — the row reads as data.
+                const [role, setRole] = createSignal<Role>(u.role);
+                const [status, setStatus] = createSignal(u.status);
+                const dirty = () => role() !== u.role || status() !== u.status;
+                return (
+                  <tr>
+                    <td>{u.name}</td>
+                    <td>{u.email}</td>
+                    <td colspan="3">
+                      <form
+                        action={editUser}
+                        method="post"
+                        style={{ display: "flex", gap: "8px", "flex-wrap": "wrap" }}
+                      >
+                        <input type="hidden" name="id" value={u.id} />
+                        <select
+                          name="role"
+                          onChange={(e) => setRole(e.currentTarget.value as Role)}
+                        >
+                          <For each={roles}>
+                            {(r) => (
+                              <option value={r} selected={r === u.role}>
+                                {t(`users.role_${r}`)}
+                              </option>
+                            )}
+                          </For>
+                        </select>
+                        <select
+                          name="status"
+                          onChange={(e) => setStatus(e.currentTarget.value as typeof u.status)}
+                        >
+                          <option value="active" selected={u.status === "active"}>
+                            {t("users.active")}
+                          </option>
+                          <option value="disabled" selected={u.status === "disabled"}>
+                            {t("users.disabled")}
+                          </option>
+                        </select>
+                        <button type="submit" disabled={!dirty() || editing.pending}>
+                          {t("common.save")}
+                        </button>
+                        <button
+                          type="button"
+                          class="btn-ghost"
+                          onClick={() => {
+                            resetting.clear?.();
+                            setResetUser({ id: u.id, name: u.name });
+                          }}
+                        >
+                          {t("users.resetPassword")}
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                );
+              }}
             </For>
           </tbody>
         </table>
