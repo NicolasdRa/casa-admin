@@ -1,11 +1,12 @@
 import { action, createAsync, query, redirect, useSubmission } from "@solidjs/router";
-import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
+import { createMemo, For, Show } from "solid-js";
 import { AppShell } from "~/components/AppShell";
 import { Modal } from "~/components/Modal";
 import { createCashEntry, deleteCashEntry, listCashLedger } from "~/db/cash";
 import { db } from "~/db/index";
 import { listPartners } from "~/db/partners";
 import { partnerStatements } from "~/db/statements";
+import { createEntityForm } from "~/lib/createEntityForm";
 import { useI18n } from "~/lib/i18n";
 import { formatMoney, toCents } from "~/lib/money";
 import { can } from "~/lib/permissions";
@@ -105,11 +106,7 @@ export default function Caja() {
       settle: sum((s) => s.settle),
     };
   });
-  const [formOpen, setFormOpen] = createSignal(false);
-  let formEl: HTMLFormElement | undefined;
-  createEffect(() => {
-    if (adding.result?.ok) formEl?.reset();
-  });
+  const form = createEntityForm(adding);
 
   return (
     <AppShell>
@@ -118,20 +115,14 @@ export default function Caja() {
           <h1>{t("caja.title")}</h1>
         </div>
         <div class="page-head-actions">
-          <button
-            type="button"
-            onClick={() => {
-              adding.clear?.();
-              setFormOpen(true);
-            }}
-          >
+          <button type="button" onClick={form.openForm}>
             + {t("caja.add")}
           </button>
         </div>
       </header>
 
-      <Modal open={formOpen()} onClose={() => setFormOpen(false)} title={t("caja.add")}>
-        <form ref={formEl} action={addCashEntry} method="post" class="toolbar entry-form">
+      <Modal open={form.open()} onClose={() => form.setOpen(false)} title={t("caja.add")}>
+        <form ref={form.setRef} action={addCashEntry} method="post" class="toolbar entry-form">
           <label class="tb-field">
             <span>{t("common.date")}</span>
             <input type="date" name="date" required value={todayLocal()} />

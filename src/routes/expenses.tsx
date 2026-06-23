@@ -19,10 +19,11 @@ import { db } from "~/db/index";
 import { settleExpense } from "~/db/settlement";
 import { listSuppliers } from "~/db/suppliers";
 import { listUsers } from "~/db/users";
-import { errorCode } from "~/lib/errors";
+import { createEntityForm } from "~/lib/createEntityForm";
 import { useI18n } from "~/lib/i18n";
 import { formatMoney, toCents } from "~/lib/money";
-import { can, defaultEntryCurrency } from "~/lib/permissions";
+import { runMutation } from "~/lib/mutation";
+import { defaultEntryCurrency, mayReimburse } from "~/lib/permissions";
 import { recordAudit, requireUser } from "~/lib/session";
 
 type ExpenseRow = ReturnType<typeof listExpensesWithPayer>[number];
@@ -38,19 +39,6 @@ const todayLocal = () => {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 };
-
-// Thrown-message → expenses.err_* suffix table (specific needles first). Raw exception text never
-// reaches the user: the action returns the suffix, the page translates it in the active locale.
-const EXPENSE_ERROR_NEEDLES: [string, string][] = [
-  ["No FX rate", "fxNoRate"],
-  ["invalid date", "dateInvalid"],
-  ["invalid amount", "amountInvalid"],
-  ["invalid currency", "currencyInvalid"],
-  ["pending co-host", "notReimbursable"],
-  ["must be an owner", "reimburserNotOwner"],
-  ["expense not found", "notFound"],
-];
-const expenseErrorCode = (e: unknown) => errorCode(e, EXPENSE_ERROR_NEEDLES);
 
 const listExpensesQuery = query(async () => {
   "use server";
@@ -83,7 +71,7 @@ const meAndUsersQuery = query(async () => {
   const users = listUsers(db).map((u) => ({ id: u.id, name: u.name }));
   return {
     meId: me.id,
-    canReimburse: can(me.role, "reimburseExpenses"),
+    canReimburse: mayReimburse(me),
     defaultCurrency: defaultEntryCurrency(me.role),
     users,
   };
@@ -105,7 +93,7 @@ const addExpense = action(async (form: FormData) => {
   const paidByUserId = payerRaw ? Number(payerRaw) : me.id;
   if (!date) return { error: "dateRequired" };
   if (!Number.isFinite(amount) || amount <= 0) return { error: "amountInvalid" };
-  try {
+  return runMutation({ audit: ["create", "expense"] }, async () => {
     // CA-89: convert pesos on the fly — if no BNA rate is stored for the date, fetch today's
     // quote from BNA before snapshotting. Backdated dates with no quote fall through to the
     // "no FX rate" error below (BNA only publishes the current day).
@@ -147,27 +135,19 @@ const addExpense = action(async (form: FormData) => {
       await writeFile(`${dir}/${fname}`, data);
       setExpenseReceipt(db, row.id, fname);
     }
-    await recordAudit("create", "expense");
-  } catch (e) {
-    return { error: expenseErrorCode(e) };
-  }
-  return { ok: true };
+  });
 }, "addExpense");
 
 // EX-9: admin reimburses a co-host's pending expense; permission enforced server-side.
 const reimburseExpense = action(async (form: FormData) => {
   "use server";
   const me = await requireUser();
-  if (!can(me.role, "reimburseExpenses")) return { error: "forbidden" };
+  if (!mayReimburse(me)) return { error: "forbidden" };
   const id = Number(form.get("id"));
   const today = new Date().toISOString().slice(0, 10);
-  try {
+  return runMutation({ audit: ["update", `expense:${id}`] }, () => {
     markExpenseReimbursed(db, id, me.id, today);
-    await recordAudit("update", `expense:${id}`);
-  } catch (e) {
-    return { error: expenseErrorCode(e) };
-  }
-  return { ok: true };
+  });
 }, "reimburseExpense");
 
 // EX-12: repay an owner for an expense they fronted. Records the Caja withdrawal (dated today, when
@@ -175,7 +155,7 @@ const reimburseExpense = action(async (form: FormData) => {
 const settleExpenseAction = action(async (form: FormData) => {
   "use server";
   const me = await requireUser();
-  if (!can(me.role, "reimburseExpenses")) return { error: "forbidden" };
+  if (!mayReimburse(me)) return { error: "forbidden" };
   const id = Number(form.get("id"));
   const today = new Date().toISOString().slice(0, 10);
   const res = settleExpense(db, id, today);
@@ -198,9 +178,9 @@ const editExpense = action(async (form: FormData) => {
   // EX-8: payer is editable here so imported/unattributed rows can be attributed; "" clears it.
   const payerRaw = form.get("paidByUserId");
   const paidByUserId = payerRaw ? Number(payerRaw) : null;
-  updateExpenseMeta(db, id, { detail, categoryId, supplierId, paidByUserId });
-  await recordAudit("update", `expense:${id}`);
-  return { ok: true };
+  return runMutation({ audit: ["update", `expense:${id}`] }, () => {
+    updateExpenseMeta(db, id, { detail, categoryId, supplierId, paidByUserId });
+  });
 }, "editExpense");
 
 export const route = {
@@ -229,7 +209,6 @@ export default function Expenses() {
   // EX-10: filter the ledger by payer. "all" | "none" (unassigned) | user id.
   const [payerFilter, setPayerFilter] = createSignal<string>("all");
   // Add-expense lives in a modal so the ledger keeps the page; opened from the primary action.
-  const [formOpen, setFormOpen] = createSignal(false);
   const submission = useSubmission(addExpense);
   const reSub = useSubmission(reimburseExpense);
   const settleSub = useSubmission(settleExpenseAction);
@@ -246,17 +225,14 @@ export default function Expenses() {
   const pendingId = (sub: typeof reSub) =>
     sub.pending ? Number((sub.input?.[0] as FormData | undefined)?.get("id")) : null;
 
-  let formEl: HTMLFormElement | undefined;
   let amountEl: HTMLInputElement | undefined;
-  // On a successful save, clear the form so the manager can keep entering the day's expenses.
-  createEffect(() => {
-    if (submission.result?.ok) {
-      formEl?.reset();
-      setDate(todayLocal());
-      setAmount(0);
-      setCurrency(me().defaultCurrency); // back to the entrant's working currency, not hardcoded EUR
-      amountEl?.focus(); // save-and-add-next: cursor straight back to amount for the next row
-    }
+  // On a successful save the primitive resets the <form>; we also reset the controlled fields so the
+  // manager can keep entering the day's expenses, cursor jumping straight back to amount.
+  const form = createEntityForm(submission, () => {
+    setDate(todayLocal());
+    setAmount(0);
+    setCurrency(me().defaultCurrency); // back to the entrant's working currency, not hardcoded EUR
+    amountEl?.focus(); // save-and-add-next: cursor straight back to amount for the next row
   });
 
   // Close the edit modal once its save lands.
@@ -288,9 +264,8 @@ export default function Expenses() {
           <button
             type="button"
             onClick={() => {
-              submission.clear?.(); // fresh modal each open — no stale saved/error banner
+              form.openForm(); // fresh modal each open — no stale saved/error banner
               setCurrency(me().defaultCurrency); // manager opens straight into ARS; autofocus lands on amount
-              setFormOpen(true);
             }}
           >
             + {t("expenses.add")}
@@ -298,9 +273,9 @@ export default function Expenses() {
         </div>
       </header>
 
-      <Modal open={formOpen()} onClose={() => setFormOpen(false)} title={t("expenses.add")}>
+      <Modal open={form.open()} onClose={() => form.setOpen(false)} title={t("expenses.add")}>
         <form
-          ref={formEl}
+          ref={form.setRef}
           action={addExpense}
           method="post"
           enctype="multipart/form-data"

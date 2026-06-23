@@ -1,5 +1,5 @@
 import { action, createAsync, query, redirect, useSubmission } from "@solidjs/router";
-import { createEffect, createSignal, For, Show } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
 import { AppShell } from "~/components/AppShell";
 import { Modal } from "~/components/Modal";
 import {
@@ -11,23 +11,16 @@ import {
   renameCategory,
 } from "~/db/expenses";
 import { db } from "~/db/index";
-import { errorCode } from "~/lib/errors";
+import { createEntityForm } from "~/lib/createEntityForm";
 import { useI18n } from "~/lib/i18n";
-import { currentUser, recordAudit } from "~/lib/session";
+import { runMutation } from "~/lib/mutation";
+import { currentUser } from "~/lib/session";
 
 async function requireAdmin() {
   const me = await currentUser();
   if (!me || me.role === "user") throw redirect("/"); // managed lists are admin/superadmin (PRD §3.1)
   return me;
 }
-
-// Thrown-message → categories.err_* suffix table. Raw exception text never reaches the user.
-const CATEGORY_ERROR_NEEDLES: [string, string][] = [
-  ["category name required", "nameRequired"],
-  ["invalid category group", "invalidGroup"],
-  ["in use", "inUse"],
-];
-const categoryErrorCode = (e: unknown) => errorCode(e, CATEGORY_ERROR_NEEDLES);
 
 const categoriesQuery = query(async () => {
   "use server";
@@ -41,13 +34,9 @@ const addCategory = action(async (form: FormData) => {
   const name = String(form.get("name") ?? "").trim();
   const group = String(form.get("group") ?? "") as CategoryGroup;
   if (!name) return { error: "nameRequired" };
-  try {
+  return runMutation({ audit: ["create", "category"] }, () => {
     createCategory(db, { name, group });
-  } catch (e) {
-    return { error: categoryErrorCode(e) };
-  }
-  await recordAudit("create", "category");
-  return { ok: true };
+  });
 }, "addCategory");
 
 const editCategory = action(async (form: FormData) => {
@@ -55,26 +44,18 @@ const editCategory = action(async (form: FormData) => {
   await requireAdmin();
   const id = Number(form.get("id"));
   const name = String(form.get("name") ?? "");
-  try {
+  return runMutation({ audit: ["update", "category"] }, () => {
     renameCategory(db, id, name);
-  } catch (e) {
-    return { error: categoryErrorCode(e) };
-  }
-  await recordAudit("update", "category");
-  return { ok: true };
+  });
 }, "editCategory");
 
 const removeCategory = action(async (form: FormData) => {
   "use server";
   await requireAdmin();
   const id = Number(form.get("id"));
-  try {
+  return runMutation({ audit: ["delete", "category"] }, () => {
     deleteCategory(db, id);
-  } catch (e) {
-    return { error: categoryErrorCode(e) };
-  }
-  await recordAudit("delete", "category");
-  return { ok: true };
+  });
 }, "removeCategory");
 
 export const route = { preload: () => categoriesQuery() };
@@ -86,11 +67,7 @@ export default function Categories() {
   const editing = useSubmission(editCategory);
   const removing = useSubmission(removeCategory);
   const errMsg = (code: string) => t(`categories.err_${code}` as Parameters<typeof t>[0]) as string;
-  const [formOpen, setFormOpen] = createSignal(false);
-  let formEl: HTMLFormElement | undefined;
-  createEffect(() => {
-    if (adding.result?.ok) formEl?.reset();
-  });
+  const form = createEntityForm(adding);
 
   return (
     <AppShell>
@@ -99,20 +76,14 @@ export default function Categories() {
           <h1>{t("categories.title")}</h1>
         </div>
         <div class="page-head-actions">
-          <button
-            type="button"
-            onClick={() => {
-              adding.clear?.();
-              setFormOpen(true);
-            }}
-          >
+          <button type="button" onClick={form.openForm}>
             + {t("categories.add")}
           </button>
         </div>
       </header>
 
-      <Modal open={formOpen()} onClose={() => setFormOpen(false)} title={t("categories.add")}>
-        <form ref={formEl} action={addCategory} method="post" class="toolbar entry-form">
+      <Modal open={form.open()} onClose={() => form.setOpen(false)} title={t("categories.add")}>
+        <form ref={form.setRef} action={addCategory} method="post" class="toolbar entry-form">
           <label class="tb-field tb-grow">
             <span>{t("categories.name")}</span>
             <input name="name" required />

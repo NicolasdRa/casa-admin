@@ -1,5 +1,5 @@
 import { A, action, createAsync, query, useSearchParams, useSubmission } from "@solidjs/router";
-import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
+import { createMemo, createSignal, For, Show } from "solid-js";
 import { AppShell } from "~/components/AppShell";
 import { FxPreview } from "~/components/FxPreview";
 import { Modal } from "~/components/Modal";
@@ -10,9 +10,10 @@ import {
   summarizeBookings,
 } from "~/db/bookings";
 import { db } from "~/db/index";
-import { errorCode } from "~/lib/errors";
+import { createEntityForm } from "~/lib/createEntityForm";
 import { useI18n } from "~/lib/i18n";
 import { formatMoney, toCents } from "~/lib/money";
+import { runMutation } from "~/lib/mutation";
 import { requireUser } from "~/lib/session";
 
 interface Filter {
@@ -41,19 +42,6 @@ const listBookingsQuery = query(async (filter: Filter) => {
   return listBookings(db, filter);
 }, "bookings");
 
-// Thrown-message → bookings.err_* suffix table (specific needles first). Raw exception text never
-// reaches the user; the page translates the returned suffix in the active locale.
-const BOOKING_ERROR_NEEDLES: [string, string][] = [
-  ["No FX rate", "fxNoRate"],
-  ["check-out", "checkOutBeforeCheckIn"],
-  ["manual rate", "manualRateInvalid"],
-  ["invalid date", "dateInvalid"],
-  ["invalid currency", "currencyInvalid"],
-  ["invalid channel", "channelInvalid"],
-  ["invalid amount", "amountInvalid"],
-];
-const bookingErrorCode = (e: unknown) => errorCode(e, BOOKING_ERROR_NEEDLES);
-
 const addBooking = action(async (form: FormData) => {
   "use server";
   await requireUser();
@@ -71,7 +59,7 @@ const addBooking = action(async (form: FormData) => {
   if (!guest) return { error: "guestRequired" };
   if (!date) return { error: "dateRequired" };
   if (!Number.isFinite(amount) || amount <= 0) return { error: "amountInvalid" };
-  try {
+  return runMutation({ audit: ["create", "booking"] }, () => {
     createBooking(db, {
       guest,
       date,
@@ -82,10 +70,7 @@ const addBooking = action(async (form: FormData) => {
       channel,
       manualRate,
     });
-  } catch (e) {
-    return { error: bookingErrorCode(e) };
-  }
-  return { ok: true };
+  });
 }, "addBooking");
 
 const accruedQuery = query(async () => {
@@ -126,15 +111,10 @@ export default function Bookings() {
   const channelLabel = (c: BookingChannel) => t(bookingChannelKey[c]);
   // Translate a returned error code to a localized message; raw codes never render.
   const errMsg = (code: string) => t(`bookings.err_${code}` as Parameters<typeof t>[0]) as string;
-  const [formOpen, setFormOpen] = createSignal(false);
-  let formEl: HTMLFormElement | undefined;
-  createEffect(() => {
-    if (submission.result?.ok) {
-      formEl?.reset();
-      setDate("");
-      setAmount(0);
-      setCurrency("EUR");
-    }
+  const form = createEntityForm(submission, () => {
+    setDate("");
+    setAmount(0);
+    setCurrency("EUR");
   });
 
   return (
@@ -148,20 +128,14 @@ export default function Bookings() {
           </p>
         </div>
         <div class="page-head-actions">
-          <button
-            type="button"
-            onClick={() => {
-              submission.clear?.();
-              setFormOpen(true);
-            }}
-          >
+          <button type="button" onClick={form.openForm}>
             + {t("bookings.add")}
           </button>
         </div>
       </header>
 
-      <Modal open={formOpen()} onClose={() => setFormOpen(false)} title={t("bookings.add")}>
-        <form ref={formEl} action={addBooking} method="post" class="toolbar entry-form">
+      <Modal open={form.open()} onClose={() => form.setOpen(false)} title={t("bookings.add")}>
+        <form ref={form.setRef} action={addBooking} method="post" class="toolbar entry-form">
           <label class="tb-field tb-grow">
             <span>{t("bookings.guest")}</span>
             <input name="guest" required />

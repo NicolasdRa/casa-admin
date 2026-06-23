@@ -1,5 +1,7 @@
 import { count, desc, eq } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import { CodedError } from "../lib/errors.ts";
+import { mayReimburse } from "../lib/permissions.ts";
 import { assertCurrency, assertIsoDate, assertPositiveCents } from "../lib/validate.ts";
 import { manualSnapshot, snapshotForDate } from "./fx.ts";
 import * as schema from "./schema.ts";
@@ -127,8 +129,9 @@ export function listCategories(db: Db) {
 
 export function createCategory(db: Db, input: { name: string; group: CategoryGroup }) {
   const name = input.name.trim();
-  if (!name) throw new Error("category name required");
-  if (!CATEGORY_GROUPS.includes(input.group)) throw new Error("invalid category group");
+  if (!name) throw new CodedError("nameRequired", "category name required");
+  if (!CATEGORY_GROUPS.includes(input.group))
+    throw new CodedError("invalidGroup", "invalid category group");
   const [row] = db.insert(schema.categories).values({ name, group: input.group }).returning().all();
   return row;
 }
@@ -136,7 +139,7 @@ export function createCategory(db: Db, input: { name: string; group: CategoryGro
 /** Rename a category (trimmed). Group stays as set at creation. */
 export function renameCategory(db: Db, id: number, name: string) {
   const trimmed = name.trim();
-  if (!trimmed) throw new Error("category name required");
+  if (!trimmed) throw new CodedError("nameRequired", "category name required");
   const [row] = db
     .update(schema.categories)
     .set({ name: trimmed })
@@ -154,7 +157,7 @@ export function deleteCategory(db: Db, id: number) {
     .from(schema.expenses)
     .where(eq(schema.expenses.categoryId, id))
     .all();
-  if (n > 0) throw new Error(`category is in use by ${n} expense(s)`);
+  if (n > 0) throw new CodedError("inUse", `category is in use by ${n} expense(s)`);
   db.delete(schema.categories).where(eq(schema.categories.id, id)).run();
 }
 
@@ -211,13 +214,13 @@ export function reimbursementStatus(
  */
 export function markExpenseReimbursed(db: Db, expenseId: number, byUserId: number, date: string) {
   const expense = getExpenseById(db, expenseId);
-  if (!expense) throw new Error("expense not found");
+  if (!expense) throw new CodedError("notFound", "expense not found");
   const payer = expense.paidByUserId != null ? getUserById(db, expense.paidByUserId) : null;
   if (reimbursementStatus(expense, payer) !== "pending")
-    throw new Error("only a pending co-host expense can be reimbursed");
+    throw new CodedError("notReimbursable", "only a pending co-host expense can be reimbursed");
   const reimburser = getUserById(db, byUserId);
-  if (!reimburser || reimburser.partnerId == null)
-    throw new Error("reimburser must be an owner (mapped to a partner)");
+  if (!reimburser || !mayReimburse(reimburser))
+    throw new CodedError("reimburserNotOwner", "reimburser must be an owner (mapped to a partner)");
   const [row] = db
     .update(schema.expenses)
     .set({ reimbursedAt: date, reimbursedByUserId: byUserId })

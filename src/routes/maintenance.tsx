@@ -1,10 +1,11 @@
 import { action, createAsync, query, useSearchParams, useSubmission } from "@solidjs/router";
-import { createEffect, createSignal, For, Show } from "solid-js";
+import { For, Show } from "solid-js";
 import { AppShell } from "~/components/AppShell";
 import { Modal } from "~/components/Modal";
 import { listExpenses } from "~/db/expenses";
 import { db } from "~/db/index";
 import { createTask, listSeasons, listTasks, setTaskStatus } from "~/db/maintenance";
+import { createEntityForm } from "~/lib/createEntityForm";
 import { useI18n } from "~/lib/i18n";
 import { recordAudit, requireUser } from "~/lib/session";
 
@@ -68,11 +69,7 @@ export default function Maintenance() {
   const expenses = createAsync(() => expensesQuery(), { initialValue: [] });
   const adding = useSubmission(addTask);
   const thisYear = String(new Date().getFullYear());
-  const [formOpen, setFormOpen] = createSignal(false);
-  let formEl: HTMLFormElement | undefined;
-  createEffect(() => {
-    if (adding.result?.ok) formEl?.reset();
-  });
+  const form = createEntityForm(adding);
 
   return (
     <AppShell>
@@ -81,20 +78,14 @@ export default function Maintenance() {
           <h1>{t("nav.tasks")}</h1>
         </div>
         <div class="page-head-actions">
-          <button
-            type="button"
-            onClick={() => {
-              adding.clear?.();
-              setFormOpen(true);
-            }}
-          >
+          <button type="button" onClick={form.openForm}>
             + {t("maintenance.add")}
           </button>
         </div>
       </header>
 
-      <Modal open={formOpen()} onClose={() => setFormOpen(false)} title={t("maintenance.add")}>
-        <form ref={formEl} action={addTask} method="post" class="toolbar entry-form">
+      <Modal open={form.open()} onClose={() => form.setOpen(false)} title={t("maintenance.add")}>
+        <form ref={form.setRef} action={addTask} method="post" class="toolbar entry-form">
           <label class="tb-field">
             <span>{t("common.date")}</span>
             <input type="date" name="date" required />
