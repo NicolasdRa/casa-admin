@@ -47,6 +47,14 @@ const MATRIX: Record<Capability, Role[]> = {
 export const can = (role: Role, capability: Capability) => MATRIX[capability].includes(role);
 
 /**
+ * Starting currency for a new booking/expense, by who's entering. The local manager (admin)
+ * works in pesos so they default to ARS; the owner abroad and the co-host default to EUR.
+ * Only the *initial* field value — the stored money is unchanged (EUR derives from the FX snapshot).
+ */
+export const defaultEntryCurrency = (role: Role): "ARS" | "EUR" =>
+  role === "admin" ? "ARS" : "EUR";
+
+/**
  * Guard for editing a user's role/status. Returns a reason to reject, or null if allowed.
  * Prevents an admin from locking themselves/everyone out:
  *  - no editing your own role/status (anti self-lockout)

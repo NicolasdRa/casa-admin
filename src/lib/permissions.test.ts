@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { can, userEditError } from "./permissions.ts";
+import { can, defaultEntryCurrency, userEditError } from "./permissions.ts";
 
 const su = { id: 1, role: "superadmin" as const };
 const su2 = { id: 2, role: "superadmin" as const };
@@ -57,4 +57,14 @@ test("co-host cannot delete or manage cash/config", () => {
   for (const cap of ["deleteExpenses", "managePartnersCash", "manageSettings"] as const) {
     assert.equal(can("user", cap), false);
   }
+});
+
+// The on-the-ground manager (admin) works in pesos, so entry defaults to ARS;
+// the owner abroad (superadmin) and the co-host (user) default to EUR. EUR is
+// always derivable from the ARS via the immutable FX snapshot, so this only
+// sets the *starting* currency, never the stored money.
+test("defaultEntryCurrency: admin enters in ARS, everyone else in EUR", () => {
+  assert.equal(defaultEntryCurrency("admin"), "ARS");
+  assert.equal(defaultEntryCurrency("superadmin"), "EUR");
+  assert.equal(defaultEntryCurrency("user"), "EUR");
 });
