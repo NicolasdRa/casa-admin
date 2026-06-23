@@ -1,24 +1,28 @@
-import { createServer } from "node:net";
+import { connect } from "node:net";
 import { spawn } from "node:child_process";
 
 // ponytail: REMOVE when SolidStart 2.x (native `vite dev`) lands as stable —
 // Vite then auto-increments the port AND prints the real URL itself, so this
 // launcher and the "dev" script indirection become dead weight. Until then,
 // vinxi v1 only exposes --port and its banner is hardcoded to 3000, lying when
-// the port moves. So: find the next free port, pin vinxi to it, print the URL
-// that actually works.
-const isFree = (port) =>
+// the port moves. So: find the next free port, pin vinxi to it, print the URL.
+
+// Detect a listener by *connecting*, not by binding: on macOS a wildcard bind
+// succeeds even when the port is held on a specific address (127.0.0.1), so a
+// bind-check falsely reports "free". A successful connect means someone's there.
+const probe = (port, host) =>
   new Promise((res) => {
-    const s = createServer()
-      .once("error", () => res(false))
-      .once("listening", () => s.close(() => res(true)))
-      .listen(port, "::"); // same dual-stack bind vinxi uses
+    const sock = connect({ port, host });
+    sock.setTimeout(400);
+    sock.once("connect", () => (sock.destroy(), res(true)));
+    const no = () => (sock.destroy(), res(false));
+    sock.once("error", no).once("timeout", no);
   });
+const inUse = async (port) =>
+  (await probe(port, "127.0.0.1")) || (await probe(port, "::1"));
 
 let port = Number(process.env.PORT) || 3000;
-// ponytail: tiny TOCTOU window between free-check and vinxi binding; fine for a
-// dev box, swap to retry-on-EADDRINUSE if it ever actually races.
-while (!(await isFree(port))) port++;
+while (await inUse(port)) port++;
 
 console.log(`\n  ➜  http://localhost:${port}/\n`);
 spawn("vinxi", ["dev", "--port", String(port)], { stdio: "inherit" });
