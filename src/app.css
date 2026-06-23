@@ -1034,7 +1034,7 @@ tr.total td {
 /* Income-vs-expense bars */
 .chart-row {
   display: grid;
-  grid-template-columns: 5rem 1fr;
+  grid-template-columns: 5rem 1fr auto;
   gap: 10px;
   align-items: center;
   margin: 3px 0;
@@ -1042,6 +1042,14 @@ tr.total td {
 .chart-row .m {
   font-size: 0.8125rem;
   color: var(--muted);
+}
+.chart-vals {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 4.5rem;
+  font-size: 0.75rem;
+  text-align: right;
 }
 .bar {
   height: 11px;

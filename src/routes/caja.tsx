@@ -2,7 +2,7 @@ import { action, createAsync, query, redirect, useSubmission } from "@solidjs/ro
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { AppShell } from "~/components/AppShell";
 import { Modal } from "~/components/Modal";
-import { createCashEntry, listCashLedger } from "~/db/cash";
+import { createCashEntry, deleteCashEntry, listCashLedger } from "~/db/cash";
 import { db } from "~/db/index";
 import { listPartners } from "~/db/partners";
 import { partnerStatements } from "~/db/statements";
@@ -16,6 +16,13 @@ async function requireCash() {
   if (!me || !can(me.role, "managePartnersCash")) throw redirect("/");
   return me;
 }
+
+// Today in the *local* calendar (not UTC) — the manager logs the day the cash actually moved.
+const todayLocal = () => {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
 
 const ledgerQuery = query(async () => {
   "use server";
@@ -59,12 +66,21 @@ const addCashEntry = action(async (form: FormData) => {
   return { ok: true };
 }, "addCashEntry");
 
+const removeCashEntry = action(async (form: FormData) => {
+  "use server";
+  await requireCash();
+  deleteCashEntry(db, Number(form.get("id")));
+  await recordAudit("delete", "cashEntry");
+  return { ok: true };
+}, "removeCashEntry");
+
 export default function Caja() {
   const { t } = useI18n();
   const ledger = createAsync(() => ledgerQuery(), { initialValue: [] });
   const partners = createAsync(() => partnersQuery(), { initialValue: [] });
   const statements = createAsync(() => statementsQuery(), { initialValue: [] });
   const adding = useSubmission(addCashEntry);
+  const removing = useSubmission(removeCashEntry);
   const money = (c: number) => fromCents(c).toFixed(2);
   const sign = (c: number) => (c < 0 ? "num neg" : c > 0 ? "num pos" : "num");
   const partnerName = createMemo(() => new Map(partners().map((p) => [p.id, p.name])));
@@ -112,7 +128,7 @@ export default function Caja() {
         <form ref={formEl} action={addCashEntry} method="post" class="toolbar entry-form">
           <label class="tb-field">
             <span>{t("common.date")}</span>
-            <input type="date" name="date" required />
+            <input type="date" name="date" required value={todayLocal()} />
           </label>
           <label class="tb-field">
             <span>{t("caja.partner")}</span>
@@ -170,7 +186,16 @@ export default function Caja() {
               </tr>
             </thead>
             <tbody>
-              <For each={statements()}>
+              <For
+                each={statements()}
+                fallback={
+                  <tr>
+                    <td colspan="7" class="note">
+                      {t("caja.noStatements")}
+                    </td>
+                  </tr>
+                }
+              >
                 {(s) => (
                   <tr>
                     <td>{s.name}</td>
@@ -236,6 +261,9 @@ export default function Caja() {
                 <th>{t("caja.concept")}</th>
                 <th class="num">EUR</th>
                 <th class="num">{t("caja.balance")}</th>
+                <th class="col-actions">
+                  <span class="sr-only">{t("common.actions")}</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -243,7 +271,7 @@ export default function Caja() {
                 each={ledgerDesc()}
                 fallback={
                   <tr>
-                    <td colspan="5" class="note">
+                    <td colspan="6" class="note">
                       {t("caja.empty")}
                     </td>
                   </tr>
@@ -261,6 +289,21 @@ export default function Caja() {
                     </td>
                     <td class={sign(e.runningBalance)} data-label={t("caja.balance")}>
                       {money(e.runningBalance)}
+                    </td>
+                    <td class="col-actions" data-label={t("common.actions")}>
+                      <form action={removeCashEntry} method="post">
+                        <input type="hidden" name="id" value={e.id} />
+                        <button
+                          type="submit"
+                          class="btn-ghost"
+                          disabled={removing.pending}
+                          onClick={(ev) => {
+                            if (!confirm(t("caja.confirmDelete"))) ev.preventDefault();
+                          }}
+                        >
+                          {t("caja.delete")}
+                        </button>
+                      </form>
                     </td>
                   </tr>
                 )}

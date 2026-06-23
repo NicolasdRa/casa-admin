@@ -31,9 +31,20 @@ const reportsQuery = query(async (y: string) => {
     balance: isCohost ? [] : multiYearBalance(db),
     commission: isCohost ? null : commissionBalance(db),
     monthly: incomeVsExpenseByMonth(db),
-    entries: biMonetaryEntries(db).slice(0, 100),
   };
 }, "reports");
+
+// RP-3 ledger is paged so older movements stay reachable instead of being silently cut at 100.
+const ENTRIES_PAGE = 100;
+const entriesQuery = query(async (page: number) => {
+  "use server";
+  await requireUser();
+  const all = biMonetaryEntries(db);
+  return {
+    rows: all.slice(page * ENTRIES_PAGE, page * ENTRIES_PAGE + ENTRIES_PAGE),
+    hasMore: all.length > (page + 1) * ENTRIES_PAGE,
+  };
+}, "reportEntries");
 
 export default function Reports() {
   const { t } = useI18n();
@@ -41,6 +52,18 @@ export default function Reports() {
   const data = createAsync(() => reportsQuery(typeof params.year === "string" ? params.year : ""), {
     initialValue: null,
   });
+  const ep = () => Math.max(0, Number(params.ep) || 0);
+  const entries = createAsync(() => entriesQuery(ep()), {
+    initialValue: { rows: [], hasMore: false },
+  });
+  // Preserve the selected year when paging the ledger; a year change resets the page (form omits ep).
+  const epHref = (p: number) => {
+    const q = new URLSearchParams();
+    if (typeof params.year === "string" && params.year) q.set("year", params.year);
+    if (p > 0) q.set("ep", String(p));
+    const s = q.toString();
+    return s ? `?${s}` : "?";
+  };
   const money = (c: number) => fromCents(c).toFixed(2);
   // Chart scale: longest income/expense bar across months.
   const maxMonth = createMemo(() => {
@@ -217,6 +240,10 @@ export default function Reports() {
                       {bar(m.income, "var(--pos)")}
                       {bar(m.expense, "var(--neg)")}
                     </div>
+                    <div class="chart-vals num">
+                      <span style={{ color: "var(--pos)" }}>{money(m.income)}</span>
+                      <span style={{ color: "var(--neg)" }}>{money(m.expense)}</span>
+                    </div>
                   </div>
                 )}
               </For>
@@ -253,7 +280,16 @@ export default function Reports() {
                     </tr>
                   </thead>
                   <tbody>
-                    <For each={d().entries}>
+                    <For
+                      each={entries().rows}
+                      fallback={
+                        <tr>
+                          <td colspan="6" class="note">
+                            {t("reports.noEntries")}
+                          </td>
+                        </tr>
+                      }
+                    >
                       {(e) => (
                         <tr>
                           <td>{e.date}</td>
@@ -279,6 +315,23 @@ export default function Reports() {
                   </tbody>
                 </table>
               </div>
+              <Show when={ep() > 0 || entries().hasMore}>
+                <nav
+                  class="page-head-actions"
+                  style={{ "justify-content": "flex-end", padding: "12px 16px" }}
+                >
+                  <Show when={ep() > 0}>
+                    <a class="btn-ghost" href={epHref(ep() - 1)}>
+                      ← {t("audit.prev")}
+                    </a>
+                  </Show>
+                  <Show when={entries().hasMore}>
+                    <a class="btn-ghost" href={epHref(ep() + 1)}>
+                      {t("audit.next")} →
+                    </a>
+                  </Show>
+                </nav>
+              </Show>
             </section>
           </>
         )}

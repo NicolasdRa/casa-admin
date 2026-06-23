@@ -24,6 +24,7 @@ async function requireAdmin() {
 // Thrown-message → categories.err_* suffix table. Raw exception text never reaches the user.
 const CATEGORY_ERROR_NEEDLES: [string, string][] = [
   ["category name required", "nameRequired"],
+  ["invalid category group", "invalidGroup"],
   ["in use", "inUse"],
 ];
 const categoryErrorCode = (e: unknown) => errorCode(e, CATEGORY_ERROR_NEEDLES);
@@ -39,11 +40,11 @@ const addCategory = action(async (form: FormData) => {
   await requireAdmin();
   const name = String(form.get("name") ?? "").trim();
   const group = String(form.get("group") ?? "") as CategoryGroup;
-  if (!name) return { error: "invalid" };
+  if (!name) return { error: "nameRequired" };
   try {
     createCategory(db, { name, group });
-  } catch {
-    return { error: "invalid" };
+  } catch (e) {
+    return { error: categoryErrorCode(e) };
   }
   await recordAudit("create", "category");
   return { ok: true };
@@ -134,9 +135,11 @@ export default function Categories() {
           </p>
         </Show>
         <Show when={adding.result?.error}>
-          <p class="alert alert-error" role="alert">
-            {t("categories.error")}
-          </p>
+          {(err) => (
+            <p class="alert alert-error" role="alert">
+              {errMsg(err())}
+            </p>
+          )}
         </Show>
       </Modal>
 

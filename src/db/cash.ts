@@ -1,4 +1,4 @@
-import { asc } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { assertIsoDate } from "../lib/validate.ts";
 import * as schema from "./schema.ts";
@@ -23,6 +23,12 @@ export function createCashEntry(db: Db, input: NewCashEntry) {
     .returning()
     .all();
   return row;
+}
+
+/** Delete a cash entry — the fix path for a mistyped movement (entries are append-only otherwise).
+ *  Leaf row: nothing references it, so the running balance simply recomputes on next read. */
+export function deleteCashEntry(db: Db, id: number) {
+  db.delete(schema.cashEntries).where(eq(schema.cashEntries.id, id)).run();
 }
 
 /** CA-1: the Caja ledger in date order with a cumulative running balance. */
