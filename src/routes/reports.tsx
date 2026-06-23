@@ -13,7 +13,7 @@ import {
   reportYears,
 } from "~/db/reports";
 import { useI18n } from "~/lib/i18n";
-import { fromCents } from "~/lib/money";
+import { formatMoney } from "~/lib/money";
 import { requireUser } from "~/lib/session";
 
 const reportsQuery = query(async (y: string) => {
@@ -47,7 +47,7 @@ const entriesQuery = query(async (page: number) => {
 }, "reportEntries");
 
 export default function Reports() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [params] = useSearchParams();
   const data = createAsync(() => reportsQuery(typeof params.year === "string" ? params.year : ""), {
     initialValue: null,
@@ -64,7 +64,7 @@ export default function Reports() {
     const s = q.toString();
     return s ? `?${s}` : "?";
   };
-  const money = (c: number) => fromCents(c).toFixed(2);
+  const money = (c: number) => formatMoney(c, locale());
   // Chart scale: longest income/expense bar across months.
   const maxMonth = createMemo(() => {
     const m = data()?.monthly ?? [];

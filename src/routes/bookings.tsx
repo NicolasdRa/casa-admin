@@ -12,7 +12,7 @@ import {
 import { db } from "~/db/index";
 import { errorCode } from "~/lib/errors";
 import { useI18n } from "~/lib/i18n";
-import { fromCents, toCents } from "~/lib/money";
+import { formatMoney, toCents } from "~/lib/money";
 import { requireUser } from "~/lib/session";
 
 interface Filter {
@@ -95,7 +95,7 @@ const accruedQuery = query(async () => {
 }, "accruedCommission");
 
 export default function Bookings() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [date, setDate] = createSignal("");
   const [amount, setAmount] = createSignal(0);
   const [currency, setCurrency] = createSignal<"ARS" | "EUR">("EUR");
@@ -122,7 +122,7 @@ export default function Bookings() {
   const summary = createMemo(() => summarizeBookings(bookings()));
   const accrued = createAsync(() => accruedQuery(), { initialValue: 0 });
   const submission = useSubmission(addBooking);
-  const money = (cents: number) => fromCents(cents).toFixed(2);
+  const money = (cents: number) => formatMoney(cents, locale());
   const channelLabel = (c: BookingChannel) => t(bookingChannelKey[c]);
   // Translate a returned error code to a localized message; raw codes never render.
   const errMsg = (code: string) => t(`bookings.err_${code}` as Parameters<typeof t>[0]) as string;

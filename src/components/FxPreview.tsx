@@ -4,7 +4,7 @@ import { getFxRate } from "~/db/fx";
 import { db } from "~/db/index";
 import { snapshot } from "~/lib/fx";
 import { useI18n } from "~/lib/i18n";
-import { fromCents, toCents } from "~/lib/money";
+import { formatMoney, toCents } from "~/lib/money";
 import { requireUser } from "~/lib/session";
 
 const rateForDate = query(async (date: string) => {
@@ -26,13 +26,13 @@ export function FxPreview(props: {
   // so the preview reassures instead of warning about a manual rate.
   autoFetch?: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const rate = createAsync(() => (props.date ? rateForDate(props.date) : Promise.resolve(null)));
   const converted = () => {
     const r = rate();
     if (!r || !Number.isFinite(props.amount) || props.amount <= 0) return null;
     const s = snapshot(toCents(props.amount), props.currency, r.average);
-    return { eur: fromCents(s.amountEur).toFixed(2), ars: fromCents(s.amountArs).toFixed(2) };
+    return { eur: formatMoney(s.amountEur, locale()), ars: formatMoney(s.amountArs, locale()) };
   };
 
   return (

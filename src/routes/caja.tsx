@@ -7,7 +7,7 @@ import { db } from "~/db/index";
 import { listPartners } from "~/db/partners";
 import { partnerStatements } from "~/db/statements";
 import { useI18n } from "~/lib/i18n";
-import { fromCents, toCents } from "~/lib/money";
+import { formatMoney, toCents } from "~/lib/money";
 import { can } from "~/lib/permissions";
 import { currentUser, recordAudit } from "~/lib/session";
 
@@ -75,13 +75,13 @@ const removeCashEntry = action(async (form: FormData) => {
 }, "removeCashEntry");
 
 export default function Caja() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const ledger = createAsync(() => ledgerQuery(), { initialValue: [] });
   const partners = createAsync(() => partnersQuery(), { initialValue: [] });
   const statements = createAsync(() => statementsQuery(), { initialValue: [] });
   const adding = useSubmission(addCashEntry);
   const removing = useSubmission(removeCashEntry);
-  const money = (c: number) => fromCents(c).toFixed(2);
+  const money = (c: number) => formatMoney(c, locale());
   const sign = (c: number) => (c < 0 ? "num neg" : c > 0 ? "num pos" : "num");
   const partnerName = createMemo(() => new Map(partners().map((p) => [p.id, p.name])));
   // running balance is computed chronologically, displayed newest-first

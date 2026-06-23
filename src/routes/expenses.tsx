@@ -21,7 +21,7 @@ import { listSuppliers } from "~/db/suppliers";
 import { listUsers } from "~/db/users";
 import { errorCode } from "~/lib/errors";
 import { useI18n } from "~/lib/i18n";
-import { fromCents, toCents } from "~/lib/money";
+import { formatMoney, toCents } from "~/lib/money";
 import { can } from "~/lib/permissions";
 import { recordAudit, requireUser } from "~/lib/session";
 
@@ -209,7 +209,7 @@ export const route = {
 };
 
 export default function Expenses() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const expenses = createAsync(() => listExpensesQuery(), { initialValue: [] });
   const categories = createAsync(() => listCategoriesQuery(), { initialValue: [] });
   const suppliers = createAsync(() => listSuppliersQuery(), { initialValue: [] });
@@ -234,7 +234,7 @@ export default function Expenses() {
   const supplierNameById = createMemo(() => new Map(suppliers().map((s) => [s.id, s.name])));
   const supplierName = (id: number | null) =>
     id != null ? (supplierNameById().get(id) ?? null) : null;
-  const money = (cents: number) => fromCents(cents).toFixed(2);
+  const money = (cents: number) => formatMoney(cents, locale());
   // Translate a returned error code to a human, localized message; raw codes never render.
   const errMsg = (code: string) => t(`expenses.err_${code}` as Parameters<typeof t>[0]) as string;
   // Which row's reimburse / settle is mid-flight (so only that button shows pending).

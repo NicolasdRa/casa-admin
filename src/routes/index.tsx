@@ -5,7 +5,7 @@ import { FxTrend } from "~/components/FxTrend";
 import { db } from "~/db/index";
 import { dashboardSummary } from "~/db/reports";
 import { useI18n } from "~/lib/i18n";
-import { fromCents } from "~/lib/money";
+import { formatMoney } from "~/lib/money";
 import { requireUser } from "~/lib/session";
 
 // Headline figures for the landing page — reuses the reports aggregation. canSeeNet mirrors
@@ -17,9 +17,9 @@ const summaryQuery = query(async () => {
 }, "dashboardSummary");
 
 export default function Dashboard() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const summary = createAsync(() => summaryQuery(), { initialValue: null });
-  const money = (c: number) => fromCents(c).toFixed(2);
+  const money = (c: number) => formatMoney(c, locale());
 
   return (
     <AppShell>
