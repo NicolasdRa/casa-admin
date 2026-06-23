@@ -22,7 +22,7 @@ import { listUsers } from "~/db/users";
 import { errorCode } from "~/lib/errors";
 import { useI18n } from "~/lib/i18n";
 import { formatMoney, toCents } from "~/lib/money";
-import { can } from "~/lib/permissions";
+import { can, defaultEntryCurrency } from "~/lib/permissions";
 import { recordAudit, requireUser } from "~/lib/session";
 
 type ExpenseRow = ReturnType<typeof listExpensesWithPayer>[number];
@@ -81,7 +81,12 @@ const meAndUsersQuery = query(async () => {
   "use server";
   const me = await requireUser();
   const users = listUsers(db).map((u) => ({ id: u.id, name: u.name }));
-  return { meId: me.id, canReimburse: can(me.role, "reimburseExpenses"), users };
+  return {
+    meId: me.id,
+    canReimburse: can(me.role, "reimburseExpenses"),
+    defaultCurrency: defaultEntryCurrency(me.role),
+    users,
+  };
 }, "expenseMeAndUsers");
 
 const addExpense = action(async (form: FormData) => {
@@ -215,7 +220,7 @@ export default function Expenses() {
   const suppliers = createAsync(() => listSuppliersQuery(), { initialValue: [] });
   const userTotals = createAsync(() => userTotalsQuery(), { initialValue: [] });
   const me = createAsync(() => meAndUsersQuery(), {
-    initialValue: { meId: 0, canReimburse: false, users: [] },
+    initialValue: { meId: 0, canReimburse: false, defaultCurrency: "EUR" as const, users: [] },
   });
   // Default the date to today — the heaviest path is entering today's spend; still freely editable.
   const [date, setDate] = createSignal(todayLocal());
@@ -242,13 +247,15 @@ export default function Expenses() {
     sub.pending ? Number((sub.input?.[0] as FormData | undefined)?.get("id")) : null;
 
   let formEl: HTMLFormElement | undefined;
+  let amountEl: HTMLInputElement | undefined;
   // On a successful save, clear the form so the manager can keep entering the day's expenses.
   createEffect(() => {
     if (submission.result?.ok) {
       formEl?.reset();
       setDate(todayLocal());
       setAmount(0);
-      setCurrency("EUR");
+      setCurrency(me().defaultCurrency); // back to the entrant's working currency, not hardcoded EUR
+      amountEl?.focus(); // save-and-add-next: cursor straight back to amount for the next row
     }
   });
 
@@ -282,6 +289,7 @@ export default function Expenses() {
             type="button"
             onClick={() => {
               submission.clear?.(); // fresh modal each open — no stale saved/error banner
+              setCurrency(me().defaultCurrency); // manager opens straight into ARS; autofocus lands on amount
               setFormOpen(true);
             }}
           >
@@ -313,11 +321,13 @@ export default function Expenses() {
             <label class="tb-field">
               <span>{t("common.amount")}</span>
               <input
+                ref={amountEl}
                 type="number"
                 name="amount"
                 step="0.01"
                 min="0"
                 required
+                autofocus
                 value={amount() || ""}
                 onInput={(e) => setAmount(Number(e.currentTarget.value))}
               />
