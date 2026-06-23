@@ -3,7 +3,7 @@
   "type": "module",
   "scripts": {
     "prepare": "git config core.hooksPath .githooks || true",
-    "dev": "vinxi dev",
+    "dev": "node scripts/dev.mjs",
     "build": "vinxi build",
     "start": "vinxi start",
     "db:push": "drizzle-kit push",
