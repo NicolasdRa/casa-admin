@@ -103,6 +103,12 @@ h2 {
 h3 {
   font-size: 0.9375rem;
 }
+/* Currency qualifier on a money-panel heading — a quiet unit hint, not part of the title. */
+.unit {
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--muted);
+}
 
 a {
   color: var(--navy);

@@ -176,7 +176,9 @@ export default function Caja() {
 
       <section class="panel">
         <div class="panel-head">
-          <h2>{t("caja.statements")}</h2>
+          <h2>
+            {t("caja.statements")} <span class="unit">(€)</span>
+          </h2>
         </div>
         <div class="table-scroll">
           <table class="cards">

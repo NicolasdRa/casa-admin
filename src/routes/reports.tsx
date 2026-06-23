@@ -116,7 +116,9 @@ export default function Reports() {
                   gap: "12px",
                 }}
               >
-                <h2>{t("reports.pnl")}</h2>
+                <h2>
+                  {t("reports.pnl")} <span class="unit">(€)</span>
+                </h2>
                 <form method="get">
                   <select name="year" onChange={(e) => e.currentTarget.form?.requestSubmit()}>
                     <For each={d().years}>
@@ -167,7 +169,9 @@ export default function Reports() {
             <Show when={d().canSeeNet && d().balance.length > 0}>
               <section class="panel">
                 <div class="panel-head">
-                  <h2>{t("reports.balance")}</h2>
+                  <h2>
+                    {t("reports.balance")} <span class="unit">(€)</span>
+                  </h2>
                 </div>
                 <div class="table-scroll">
                   <table class="cards">
