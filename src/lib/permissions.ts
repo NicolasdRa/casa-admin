@@ -55,6 +55,16 @@ export const defaultEntryCurrency = (role: Role): "ARS" | "EUR" =>
   role === "admin" ? "ARS" : "EUR";
 
 /**
+ * EX-9: may this actor reimburse a co-host's out-of-pocket expense? The authoritative actor-side
+ * rule, previously split — the capability lived in the route's RPC gate, the owner (partner-mapping)
+ * check in `markExpenseReimbursed`. Unifying them here keeps the UI button, the RPC gate and the db
+ * guard reading one truth. The expense-side ("is it a pending co-host expense?") stays in
+ * `reimbursementStatus`; both must hold for a reimbursement to go through.
+ */
+export const mayReimburse = (actor: { role: Role; partnerId: number | null }): boolean =>
+  can(actor.role, "reimburseExpenses") && actor.partnerId != null;
+
+/**
  * Guard for editing a user's role/status. Returns a reason to reject, or null if allowed.
  * Prevents an admin from locking themselves/everyone out:
  *  - no editing your own role/status (anti self-lockout)

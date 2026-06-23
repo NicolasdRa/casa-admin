@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { can, defaultEntryCurrency, userEditError } from "./permissions.ts";
+import { can, defaultEntryCurrency, mayReimburse, userEditError } from "./permissions.ts";
 
 const su = { id: 1, role: "superadmin" as const };
 const su2 = { id: 2, role: "superadmin" as const };
@@ -67,4 +67,17 @@ test("defaultEntryCurrency: admin enters in ARS, everyone else in EUR", () => {
   assert.equal(defaultEntryCurrency("admin"), "ARS");
   assert.equal(defaultEntryCurrency("superadmin"), "EUR");
   assert.equal(defaultEntryCurrency("user"), "EUR");
+});
+
+// EX-9: an actor may reimburse a co-host's expense only if they BOTH hold the capability (admin+)
+// AND are mapped to a partner (an owner). The capability lived in the RPC gate, the owner check in
+// the db fn — mayReimburse unifies the two so the UI, RPC and db can't drift apart.
+test("mayReimburse: needs both the capability and an owner (partner) mapping", () => {
+  assert.equal(mayReimburse({ role: "admin", partnerId: 7 }), true);
+  assert.equal(mayReimburse({ role: "superadmin", partnerId: 1 }), true);
+  // capability but not an owner — db would reject with reimburserNotOwner, so the gate must too
+  assert.equal(mayReimburse({ role: "admin", partnerId: null }), false);
+  // owner mapping but no capability (co-host who happens to be partner-mapped)
+  assert.equal(mayReimburse({ role: "user", partnerId: 7 }), false);
+  assert.equal(mayReimburse({ role: "user", partnerId: null }), false);
 });
