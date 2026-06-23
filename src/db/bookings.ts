@@ -1,5 +1,6 @@
 import { and, desc, eq, gte, like, lte } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import { CodedError } from "../lib/errors.ts";
 import { commissionEur } from "../lib/fx.ts";
 import {
   assertChannel,
@@ -42,7 +43,8 @@ export function createBooking(db: Db, input: NewBooking) {
   let checkOut: string | null = null;
   if (input.checkOut) {
     assertIsoDate(input.checkOut);
-    if (input.checkOut <= input.date) throw new Error(`check-out must be after check-in`);
+    if (input.checkOut <= input.date)
+      throw new CodedError("checkOutBeforeCheckIn", "check-out must be after check-in");
     checkOut = input.checkOut;
   }
   const fx =

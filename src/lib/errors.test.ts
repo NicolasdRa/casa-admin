@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { errorCode } from "./errors.ts";
+import { CodedError, errorCode } from "./errors.ts";
 
 const table: [string, string][] = [
   ["No FX rate", "fxNoRate"],
@@ -29,4 +29,18 @@ test("checks the table in order — first match wins, so put specific needles fi
 test("stringifies non-Error inputs instead of throwing", () => {
   assert.equal(errorCode("No FX rate today", table), "fxNoRate");
   assert.equal(errorCode(null, table), "generic");
+});
+
+test("a CodedError short-circuits the table — its code is used verbatim", () => {
+  // The whole point of CA candidate-2: the code lives at the throw site, not in a needle table.
+  assert.equal(errorCode(new CodedError("reimburserNotOwner", "reimburser must be an owner"), table), "reimburserNotOwner");
+  // ...even with an empty table, so a fully-migrated module needs no table at all.
+  assert.equal(errorCode(new CodedError("inUse", "category is in use"), []), "inUse");
+});
+
+test("CodedError keeps the human message for logs", () => {
+  const e = new CodedError("notFound", "expense not found");
+  assert.ok(e instanceof Error);
+  assert.equal(e.message, "expense not found");
+  assert.equal(e.code, "notFound");
 });

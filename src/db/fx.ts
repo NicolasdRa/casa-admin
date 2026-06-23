@@ -1,5 +1,6 @@
 import { desc, lte } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import { CodedError } from "../lib/errors.ts";
 import { bnaAverage, type Currency, snapshot } from "../lib/fx.ts";
 import * as schema from "./schema.ts";
 
@@ -46,7 +47,7 @@ export function getFxRate(db: Db, date: string) {
  */
 export function snapshotForDate(db: Db, date: string, currency: Currency, amountCents: number) {
   const rate = getFxRate(db, date);
-  if (!rate) throw new Error(`No FX rate available on or before ${date}`);
+  if (!rate) throw new CodedError("fxNoRate", `No FX rate available on or before ${date}`);
   const { amountEur, amountArs } = snapshot(amountCents, currency, rate.average);
   return { fxRate: rate.average, fxRateDate: rate.date, amountEur, amountArs };
 }
@@ -70,7 +71,7 @@ export function manualSnapshot(
   amountCents: number,
   rate: number,
 ) {
-  if (!(rate > 0)) throw new Error("manual rate must be positive");
+  if (!(rate > 0)) throw new CodedError("manualRateInvalid", "manual rate must be positive");
   const { amountEur, amountArs } = snapshot(amountCents, currency, rate);
   return { fxRate: rate, fxRateDate: date, amountEur, amountArs };
 }

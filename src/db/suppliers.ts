@@ -1,5 +1,6 @@
 import { count, eq } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import { CodedError } from "../lib/errors.ts";
 import * as schema from "./schema.ts";
 
 type Db = BetterSQLite3Database<typeof schema>;
@@ -8,7 +9,7 @@ type Db = BetterSQLite3Database<typeof schema>;
  *  if one matches, so the reusable list stays free of near-duplicates (EX-5). */
 export function createSupplier(db: Db, name: string) {
   const trimmed = name.trim();
-  if (!trimmed) throw new Error("supplier name required");
+  if (!trimmed) throw new CodedError("nameRequired", "supplier name required");
   // ponytail: linear scan over the supplier list (tiny); switch to a lower(name) index if it ever grows.
   const existing = listSuppliers(db).find((s) => s.name.toLowerCase() === trimmed.toLowerCase());
   if (existing) return existing;
@@ -24,12 +25,12 @@ export function listSuppliers(db: Db) {
  *  (case-insensitive) so the dedup invariant from createSupplier holds under edits too. */
 export function renameSupplier(db: Db, id: number, name: string) {
   const trimmed = name.trim();
-  if (!trimmed) throw new Error("supplier name required");
+  if (!trimmed) throw new CodedError("nameRequired", "supplier name required");
   // ponytail: linear scan, same as createSupplier — fine at this size.
   const clash = listSuppliers(db).find(
     (s) => s.id !== id && s.name.toLowerCase() === trimmed.toLowerCase(),
   );
-  if (clash) throw new Error(`supplier "${trimmed}" already exists`);
+  if (clash) throw new CodedError("duplicate", `supplier "${trimmed}" already exists`);
   const [row] = db
     .update(schema.suppliers)
     .set({ name: trimmed })
@@ -47,6 +48,6 @@ export function deleteSupplier(db: Db, id: number) {
     .from(schema.expenses)
     .where(eq(schema.expenses.supplierId, id))
     .all();
-  if (n > 0) throw new Error(`supplier is in use by ${n} expense(s)`);
+  if (n > 0) throw new CodedError("inUse", `supplier is in use by ${n} expense(s)`);
   db.delete(schema.suppliers).where(eq(schema.suppliers.id, id)).run();
 }
