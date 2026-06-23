@@ -11,6 +11,12 @@ import { formatMoney, toCents } from "~/lib/money";
 import { can } from "~/lib/permissions";
 import { currentUser, recordAudit } from "~/lib/session";
 
+// ponytail: 3-line dupe of the same helper in expenses.tsx — cheaper than a shared
+// module for one DOM call; extract if a third row-menu appears.
+function closePopover(el: HTMLElement) {
+  el.closest<HTMLElement>("[popover]")?.hidePopover();
+}
+
 async function requireCash() {
   const me = await currentUser();
   if (!me || !can(me.role, "managePartnersCash")) throw redirect("/");
@@ -290,20 +296,43 @@ export default function Caja() {
                     <td class={sign(e.runningBalance)} data-label={t("caja.balance")}>
                       {money(e.runningBalance)}
                     </td>
+                    {/* Same per-row ⋯ menu as the expenses ledger: one consistent actions
+                        affordance, and the destructive delete now sits behind a click + confirm
+                        instead of a bare always-visible button. */}
                     <td class="col-actions" data-label={t("common.actions")}>
-                      <form action={removeCashEntry} method="post">
-                        <input type="hidden" name="id" value={e.id} />
-                        <button
-                          type="submit"
-                          class="btn-ghost"
-                          disabled={removing.pending}
-                          onClick={(ev) => {
-                            if (!confirm(t("caja.confirmDelete"))) ev.preventDefault();
-                          }}
-                        >
-                          {t("caja.delete")}
-                        </button>
-                      </form>
+                      <button
+                        type="button"
+                        class="row-menu-trigger"
+                        aria-label={t("common.actions")}
+                        popovertarget={`caja-menu-${e.id}`}
+                        style={{ "anchor-name": `--caja-menu-${e.id}` }}
+                      >
+                        ⋯
+                      </button>
+                      <div
+                        id={`caja-menu-${e.id}`}
+                        popover="auto"
+                        class="menu-pop"
+                        style={{ "position-anchor": `--caja-menu-${e.id}` }}
+                      >
+                        <form action={removeCashEntry} method="post">
+                          <input type="hidden" name="id" value={e.id} />
+                          <button
+                            type="submit"
+                            class="menu-item menu-item-danger"
+                            disabled={removing.pending}
+                            onClick={(ev) => {
+                              if (!confirm(t("caja.confirmDelete"))) {
+                                ev.preventDefault();
+                                return;
+                              }
+                              closePopover(ev.currentTarget);
+                            }}
+                          >
+                            {t("caja.delete")}
+                          </button>
+                        </form>
+                      </div>
                     </td>
                   </tr>
                 )}

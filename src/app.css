@@ -451,6 +451,14 @@ tr.total td {
   color: var(--navy);
   box-shadow: none;
 }
+/* Destructive menu action (e.g. delete a cash movement) reads as destructive. */
+.menu-item-danger {
+  color: var(--neg);
+}
+.menu-item-danger:hover:not(:disabled) {
+  background: var(--neg-bg);
+  color: var(--neg);
+}
 
 /* Desktop: stop long column headers from forcing wide columns — truncate the label so the
    column shrinks to its data. Full text stays in the th `title`; mobile shows it via data-label. */
