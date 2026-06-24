@@ -408,6 +408,30 @@ tr.total td {
   border: 0;
 }
 
+/* Checkbox column for bulk selection — hugs its content like the actions column. */
+.col-check {
+  width: 1%;
+  white-space: nowrap;
+  text-align: center;
+}
+/* Sortable column header: reads as the header label, not a chunky button, with a hover cue. */
+.th-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+.th-sort:hover {
+  color: var(--navy);
+}
+
 /* Per-row three-dot action menu, built on native <details> (Esc/click-to-toggle for free). */
 .col-actions {
   width: 1%;

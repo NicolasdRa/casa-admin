@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import * as schema from "./schema.ts";
-import { createSupplier, deleteSupplier, listSuppliers, renameSupplier } from "./suppliers.ts";
+import {
+  createSupplier,
+  deleteSupplier,
+  deleteSuppliers,
+  listSuppliers,
+  renameSupplier,
+} from "./suppliers.ts";
 import { makeTestDb } from "./testdb.ts";
 
 test("createSupplier trims and stores a supplier", () => {
@@ -83,4 +89,38 @@ test("deleteSupplier refuses to delete a supplier referenced by an expense", () 
     .run();
   assert.throws(() => deleteSupplier(db, s.id), /in use|referenced|expense/i);
   assert.equal(listSuppliers(db).length, 1);
+});
+
+test("deleteSuppliers removes several unreferenced suppliers at once", () => {
+  const db = makeTestDb();
+  const a = createSupplier(db, "Alfa");
+  const b = createSupplier(db, "Beta");
+  createSupplier(db, "Gamma");
+  deleteSuppliers(db, [a.id, b.id]);
+  assert.deepEqual(
+    listSuppliers(db).map((s) => s.name),
+    ["Gamma"],
+  );
+});
+
+test("deleteSuppliers is all-or-nothing — one in-use supplier rolls back the whole batch", () => {
+  const db = makeTestDb();
+  const a = createSupplier(db, "Alfa");
+  const used = createSupplier(db, "Beta");
+  db.insert(schema.expenses)
+    .values({
+      date: "2026-01-01",
+      detail: "luz",
+      supplierId: used.id,
+      currency: "ARS",
+      amount: 1000,
+      fxRate: 1,
+      fxRateDate: "2026-01-01",
+      amountEur: 1,
+      amountArs: 1000,
+    })
+    .run();
+  assert.throws(() => deleteSuppliers(db, [a.id, used.id]), /in use|referenced|expense/i);
+  // nothing deleted — Alfa survives even though it was deletable on its own
+  assert.equal(listSuppliers(db).length, 2);
 });

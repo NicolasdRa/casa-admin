@@ -51,3 +51,11 @@ export function deleteSupplier(db: Db, id: number) {
   if (n > 0) throw new CodedError("inUse", `supplier is in use by ${n} expense(s)`);
   db.delete(schema.suppliers).where(eq(schema.suppliers.id, id)).run();
 }
+
+/** Bulk-delete suppliers, all-or-nothing: the transaction rolls back if *any* id is still
+ *  referenced, so a partial delete can never leave the selection half-applied (CA-113). */
+export function deleteSuppliers(db: Db, ids: number[]) {
+  db.transaction((tx) => {
+    for (const id of ids) deleteSupplier(tx, id);
+  });
+}

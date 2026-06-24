@@ -1,10 +1,16 @@
 import { action, createAsync, query, redirect, useSubmission } from "@solidjs/router";
-import { createEffect, createSignal, For, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { AppShell } from "~/components/AppShell";
 import { useConfirm } from "~/components/ConfirmProvider";
 import { Modal } from "~/components/Modal";
 import { db } from "~/db/index";
-import { createSupplier, deleteSupplier, listSuppliers, renameSupplier } from "~/db/suppliers";
+import {
+  createSupplier,
+  deleteSupplier,
+  deleteSuppliers,
+  listSuppliers,
+  renameSupplier,
+} from "~/db/suppliers";
 import { createEntityForm } from "~/lib/createEntityForm";
 import { useI18n } from "~/lib/i18n";
 import { runMutation } from "~/lib/mutation";
@@ -59,6 +65,15 @@ const removeSupplier = action(async (form: FormData) => {
   });
 }, "removeSupplier");
 
+const bulkRemoveSuppliers = action(async (form: FormData) => {
+  "use server";
+  await requireAdmin();
+  const ids = form.getAll("id").map(Number);
+  return runMutation({ audit: ["delete", "supplier"] }, () => {
+    deleteSuppliers(db, ids);
+  });
+}, "bulkRemoveSuppliers");
+
 export const route = { preload: () => listSuppliersQuery() };
 
 // Dismiss the native popover a menu button lives in — top-layer menus don't close on inner clicks.
@@ -74,6 +89,7 @@ export default function Suppliers() {
   const adding = useSubmission(addSupplier);
   const editing = useSubmission(editSupplier);
   const removing = useSubmission(removeSupplier);
+  const bulkRemoving = useSubmission(bulkRemoveSuppliers);
   const errMsg = (code: string) => t(`suppliers.err_${code}` as Parameters<typeof t>[0]) as string;
   const form = createEntityForm(adding);
   // The supplier whose edit modal is open (null = closed); holds the row so the form pre-fills.
@@ -82,6 +98,37 @@ export default function Suppliers() {
   createEffect(() => {
     if (editing.result?.ok) setEditTarget(null);
   });
+
+  // Filter + sort are client-side: the whole list is already loaded and tiny (EX-5), so a round-trip
+  // would only add latency. Bulk selection is held as a Set of ids.
+  const [q, setQ] = createSignal("");
+  const [sortDir, setSortDir] = createSignal<"asc" | "desc">("asc");
+  const [selected, setSelected] = createSignal<Set<number>>(new Set());
+
+  const view = createMemo(() => {
+    const needle = q().trim().toLowerCase();
+    const rows = suppliers().filter((s) => s.name.toLowerCase().includes(needle));
+    const dir = sortDir() === "asc" ? 1 : -1;
+    return [...rows].sort((a, b) => dir * a.name.localeCompare(b.name));
+  });
+
+  const toggle = (id: number) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  // Select-all toggles the *visible* rows only — selection respects the active filter.
+  const allVisibleSelected = () => view().length > 0 && view().every((s) => selected().has(s.id));
+  const toggleAll = () =>
+    setSelected(allVisibleSelected() ? new Set() : new Set(view().map((s) => s.id)));
+
+  // Clear the selection once a bulk delete lands so the (now-gone) ids don't linger.
+  createEffect(() => {
+    if (bulkRemoving.result?.ok) setSelected(new Set());
+  });
+
+  const cols = () => (canManage() ? 3 : 1);
 
   return (
     <AppShell>
@@ -151,24 +198,78 @@ export default function Suppliers() {
         </Show>
       </Modal>
 
-      <Show when={removing.result?.error}>
+      <Show when={removing.result?.error ?? bulkRemoving.result?.error}>
         {(err) => (
           <p class="alert alert-error" role="alert">
             {errMsg(err())}
           </p>
         )}
       </Show>
-      <Show when={editing.result?.ok || removing.result?.ok}>
+      <Show when={editing.result?.ok || removing.result?.ok || bulkRemoving.result?.ok}>
         <p class="alert alert-success" role="status">
           {t("common.saved")}
         </p>
       </Show>
 
+      <div class="toolbar filter">
+        <input
+          type="search"
+          placeholder={t("suppliers.filter")}
+          value={q()}
+          onInput={(e) => setQ(e.currentTarget.value)}
+          aria-label={t("suppliers.filter")}
+        />
+        {/* Bulk action bar appears only with a live selection — no dead buttons otherwise. */}
+        <Show when={canManage() && selected().size > 0}>
+          <span class="toolbar-label">
+            {selected().size} {t("suppliers.selected")}
+          </span>
+          <form action={bulkRemoveSuppliers} method="post">
+            <For each={[...selected()]}>{(id) => <input type="hidden" name="id" value={id} />}</For>
+            <button
+              type="submit"
+              class="btn-ghost"
+              disabled={bulkRemoving.pending}
+              onClick={async (e) => {
+                e.preventDefault();
+                const f = e.currentTarget.form;
+                if (
+                  await confirm({ message: t("suppliers.confirmDeleteSelected"), danger: true })
+                ) {
+                  f?.requestSubmit();
+                }
+              }}
+            >
+              {t("suppliers.deleteSelected")}
+            </button>
+          </form>
+        </Show>
+      </div>
+
       <div class="panel table-scroll">
         <table>
           <thead>
             <tr>
-              <th>{t("suppliers.name")}</th>
+              <Show when={canManage()}>
+                <th class="col-check">
+                  <input
+                    type="checkbox"
+                    checked={allVisibleSelected()}
+                    onChange={toggleAll}
+                    aria-label={t("common.actions")}
+                  />
+                </th>
+              </Show>
+              <th>
+                <button
+                  type="button"
+                  class="th-sort"
+                  onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
+                >
+                  {t("suppliers.name")}{" "}
+                  <span aria-hidden="true">{sortDir() === "asc" ? "▲" : "▼"}</span>
+                </button>
+              </th>
               <Show when={canManage()}>
                 <th class="col-actions">
                   <span class="sr-only">{t("common.actions")}</span>
@@ -178,17 +279,27 @@ export default function Suppliers() {
           </thead>
           <tbody>
             <For
-              each={suppliers()}
+              each={view()}
               fallback={
                 <tr>
-                  <td class="note" colspan="2">
-                    {t("suppliers.empty")}
+                  <td class="note" colspan={cols()}>
+                    {suppliers().length === 0 ? t("suppliers.empty") : t("suppliers.noMatch")}
                   </td>
                 </tr>
               }
             >
               {(s) => (
                 <tr>
+                  <Show when={canManage()}>
+                    <td class="col-check">
+                      <input
+                        type="checkbox"
+                        checked={selected().has(s.id)}
+                        onChange={() => toggle(s.id)}
+                        aria-label={s.name}
+                      />
+                    </td>
+                  </Show>
                   <td>{s.name}</td>
                   <Show when={canManage()}>
                     {/* Row action menu (⋯): edit + delete. Native Popover API → top layer, so
