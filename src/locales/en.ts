@@ -190,6 +190,7 @@ export const en = {
   suppliers: {
     title: "Suppliers",
     add: "Add supplier",
+    editTitle: "Edit supplier",
     name: "Name",
     manage: "Manage suppliers",
     empty: "No suppliers yet.",

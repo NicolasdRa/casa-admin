@@ -191,6 +191,7 @@ export const es = {
   suppliers: {
     title: "Proveedores",
     add: "Agregar proveedor",
+    editTitle: "Editar proveedor",
     name: "Nombre",
     manage: "Gestionar proveedores",
     empty: "Sin proveedores todavía.",

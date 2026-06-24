@@ -1,5 +1,5 @@
-import { action, createAsync, query, useSubmission } from "@solidjs/router";
-import { createSignal, For, Show } from "solid-js";
+import { action, createAsync, query, redirect, useSubmission } from "@solidjs/router";
+import { createEffect, createSignal, For, Show } from "solid-js";
 import { AppShell } from "~/components/AppShell";
 import { useConfirm } from "~/components/ConfirmProvider";
 import { Modal } from "~/components/Modal";
@@ -8,7 +8,16 @@ import { createSupplier, deleteSupplier, listSuppliers, renameSupplier } from "~
 import { createEntityForm } from "~/lib/createEntityForm";
 import { useI18n } from "~/lib/i18n";
 import { runMutation } from "~/lib/mutation";
-import { requireUser } from "~/lib/session";
+import { currentUser, requireUser } from "~/lib/session";
+
+type Supplier = ReturnType<typeof listSuppliers>[number];
+
+// Edit/delete are admin/superadmin only (CA-113); the list stays readable by any signed-in user.
+async function requireAdmin() {
+  const me = await currentUser();
+  if (!me || me.role === "user") throw redirect("/");
+  return me;
+}
 
 const listSuppliersQuery = query(async () => {
   "use server";
@@ -16,9 +25,15 @@ const listSuppliersQuery = query(async () => {
   return listSuppliers(db);
 }, "suppliers");
 
+const canManageQuery = query(async () => {
+  "use server";
+  const me = await currentUser();
+  return !!me && me.role !== "user";
+}, "suppliersCanManage");
+
 const addSupplier = action(async (form: FormData) => {
   "use server";
-  await requireUser();
+  await requireAdmin();
   const name = String(form.get("name") ?? "");
   return runMutation({ audit: ["create", "supplier"] }, () => {
     createSupplier(db, name);
@@ -27,7 +42,7 @@ const addSupplier = action(async (form: FormData) => {
 
 const editSupplier = action(async (form: FormData) => {
   "use server";
-  await requireUser();
+  await requireAdmin();
   const id = Number(form.get("id"));
   const name = String(form.get("name") ?? "");
   return runMutation({ audit: ["update", "supplier"] }, () => {
@@ -37,7 +52,7 @@ const editSupplier = action(async (form: FormData) => {
 
 const removeSupplier = action(async (form: FormData) => {
   "use server";
-  await requireUser();
+  await requireAdmin();
   const id = Number(form.get("id"));
   return runMutation({ audit: ["delete", "supplier"] }, () => {
     deleteSupplier(db, id);
@@ -46,15 +61,27 @@ const removeSupplier = action(async (form: FormData) => {
 
 export const route = { preload: () => listSuppliersQuery() };
 
+// Dismiss the native popover a menu button lives in — top-layer menus don't close on inner clicks.
+function closePopover(el: HTMLElement) {
+  el.closest<HTMLElement>("[popover]")?.hidePopover();
+}
+
 export default function Suppliers() {
   const { t } = useI18n();
   const confirm = useConfirm();
   const suppliers = createAsync(() => listSuppliersQuery(), { initialValue: [] });
+  const canManage = createAsync(() => canManageQuery(), { initialValue: false });
   const adding = useSubmission(addSupplier);
   const editing = useSubmission(editSupplier);
   const removing = useSubmission(removeSupplier);
   const errMsg = (code: string) => t(`suppliers.err_${code}` as Parameters<typeof t>[0]) as string;
   const form = createEntityForm(adding);
+  // The supplier whose edit modal is open (null = closed); holds the row so the form pre-fills.
+  const [editTarget, setEditTarget] = createSignal<Supplier | null>(null);
+  // Close the edit modal once its save lands.
+  createEffect(() => {
+    if (editing.result?.ok) setEditTarget(null);
+  });
 
   return (
     <AppShell>
@@ -62,11 +89,13 @@ export default function Suppliers() {
         <div>
           <h1>{t("suppliers.title")}</h1>
         </div>
-        <div class="page-head-actions">
-          <button type="button" onClick={form.openForm}>
-            + {t("suppliers.add")}
-          </button>
-        </div>
+        <Show when={canManage()}>
+          <div class="page-head-actions">
+            <button type="button" onClick={form.openForm}>
+              + {t("suppliers.add")}
+            </button>
+          </div>
+        </Show>
       </header>
 
       <Modal open={form.open()} onClose={() => form.setOpen(false)} title={t("suppliers.add")}>
@@ -93,15 +122,42 @@ export default function Suppliers() {
         </Show>
       </Modal>
 
-      <Show when={editing.result?.error ?? removing.result?.error}>
+      {/* Edit modal — pre-filled with the row's current name; mirrors the expenses edit flow. */}
+      <Modal
+        open={editTarget() != null}
+        onClose={() => setEditTarget(null)}
+        title={t("suppliers.editTitle")}
+      >
+        <Show when={editTarget()}>
+          {(s) => (
+            <form action={editSupplier} method="post" class="toolbar entry-form">
+              <input type="hidden" name="id" value={s().id} />
+              <label class="tb-field tb-grow">
+                <span>{t("suppliers.name")}</span>
+                <input name="name" value={s().name} required />
+              </label>
+              <button type="submit" disabled={editing.pending}>
+                {editing.pending ? t("common.saving") : t("common.save")}
+              </button>
+              <Show when={editing.result?.error}>
+                {(err) => (
+                  <p class="alert alert-error" role="alert">
+                    {errMsg(err())}
+                  </p>
+                )}
+              </Show>
+            </form>
+          )}
+        </Show>
+      </Modal>
+
+      <Show when={removing.result?.error}>
         {(err) => (
           <p class="alert alert-error" role="alert">
             {errMsg(err())}
           </p>
         )}
       </Show>
-
-      {/* Rename/delete used to land silently — confirm the write so the user knows it took. */}
       <Show when={editing.result?.ok || removing.result?.ok}>
         <p class="alert alert-success" role="status">
           {t("common.saved")}
@@ -113,7 +169,11 @@ export default function Suppliers() {
           <thead>
             <tr>
               <th>{t("suppliers.name")}</th>
-              <th />
+              <Show when={canManage()}>
+                <th class="col-actions">
+                  <span class="sr-only">{t("common.actions")}</span>
+                </th>
+              </Show>
             </tr>
           </thead>
           <tbody>
@@ -127,54 +187,67 @@ export default function Suppliers() {
                 </tr>
               }
             >
-              {(s) => {
-                // Save stays dimmed until the name actually changes — the row reads as data,
-                // not a wall of live buttons (DESIGN.md's hover-action intent, touch-safe).
-                const [name, setName] = createSignal(s.name);
-                const dirty = () => name().trim() !== "" && name().trim() !== s.name;
-                return (
-                  <tr>
-                    <td>
-                      <form
-                        action={editSupplier}
-                        method="post"
-                        style={{ display: "flex", gap: "8px", "flex-wrap": "wrap" }}
+              {(s) => (
+                <tr>
+                  <td>{s.name}</td>
+                  <Show when={canManage()}>
+                    {/* Row action menu (⋯): edit + delete. Native Popover API → top layer, so
+                        the dropdown is never clipped by the table; anchor ties it to this row. */}
+                    <td class="col-actions" data-label={t("common.actions")}>
+                      <button
+                        type="button"
+                        class="row-menu-trigger"
+                        aria-label={t("common.actions")}
+                        popovertarget={`sup-menu-${s.id}`}
+                        style={{ "anchor-name": `--sup-menu-${s.id}` }}
                       >
-                        <input type="hidden" name="id" value={s.id} />
-                        <input
-                          name="name"
-                          value={s.name}
-                          onInput={(e) => setName(e.currentTarget.value)}
-                          required
-                        />
-                        <button type="submit" disabled={!dirty() || editing.pending}>
-                          {t("common.save")}
-                        </button>
-                      </form>
-                    </td>
-                    <td>
-                      <form action={removeSupplier} method="post">
-                        <input type="hidden" name="id" value={s.id} />
+                        ⋯
+                      </button>
+                      <div
+                        id={`sup-menu-${s.id}`}
+                        popover="auto"
+                        class="menu-pop"
+                        style={{ "position-anchor": `--sup-menu-${s.id}` }}
+                      >
                         <button
-                          type="submit"
-                          class="btn-ghost"
-                          onClick={async (e) => {
-                            e.preventDefault();
-                            const form = e.currentTarget.form;
-                            if (
-                              await confirm({ message: t("suppliers.confirmDelete"), danger: true })
-                            ) {
-                              form?.requestSubmit();
-                            }
+                          type="button"
+                          class="menu-item"
+                          onClick={(ev) => {
+                            editing.clear?.(); // fresh modal — no stale error banner
+                            setEditTarget(s);
+                            closePopover(ev.currentTarget);
                           }}
                         >
-                          {t("suppliers.delete")}
+                          {t("common.edit")}
                         </button>
-                      </form>
+                        <form action={removeSupplier} method="post">
+                          <input type="hidden" name="id" value={s.id} />
+                          <button
+                            type="submit"
+                            class="menu-item"
+                            onClick={async (ev) => {
+                              ev.preventDefault();
+                              const button = ev.currentTarget;
+                              const f = button.form;
+                              if (
+                                await confirm({
+                                  message: t("suppliers.confirmDelete"),
+                                  danger: true,
+                                })
+                              ) {
+                                closePopover(button);
+                                f?.requestSubmit();
+                              }
+                            }}
+                          >
+                            {t("suppliers.delete")}
+                          </button>
+                        </form>
+                      </div>
                     </td>
-                  </tr>
-                );
-              }}
+                  </Show>
+                </tr>
+              )}
             </For>
           </tbody>
         </table>
