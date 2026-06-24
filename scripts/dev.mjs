@@ -1,5 +1,5 @@
-import { connect } from "node:net";
 import { spawn } from "node:child_process";
+import { connect } from "node:net";
 
 // ponytail: REMOVE when SolidStart 2.x (native `vite dev`) lands as stable —
 // Vite then auto-increments the port AND prints the real URL itself, so this
@@ -18,8 +18,7 @@ const probe = (port, host) =>
     const no = () => (sock.destroy(), res(false));
     sock.once("error", no).once("timeout", no);
   });
-const inUse = async (port) =>
-  (await probe(port, "127.0.0.1")) || (await probe(port, "::1"));
+const inUse = async (port) => (await probe(port, "127.0.0.1")) || (await probe(port, "::1"));
 
 let port = Number(process.env.PORT) || 3000;
 while (await inUse(port)) port++;

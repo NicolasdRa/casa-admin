@@ -33,7 +33,10 @@ test("stringifies non-Error inputs instead of throwing", () => {
 
 test("a CodedError short-circuits the table — its code is used verbatim", () => {
   // The whole point of CA candidate-2: the code lives at the throw site, not in a needle table.
-  assert.equal(errorCode(new CodedError("reimburserNotOwner", "reimburser must be an owner"), table), "reimburserNotOwner");
+  assert.equal(
+    errorCode(new CodedError("reimburserNotOwner", "reimburser must be an owner"), table),
+    "reimburserNotOwner",
+  );
   // ...even with an empty table, so a fully-migrated module needs no table at all.
   assert.equal(errorCode(new CodedError("inUse", "category is in use"), []), "inUse");
 });
