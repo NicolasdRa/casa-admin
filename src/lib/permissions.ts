@@ -82,3 +82,21 @@ export function userEditError(
   if (removesSuperadmin && activeSuperadmins <= 1) return "last_superadmin";
   return null;
 }
+
+/**
+ * Guard for deleting one or more users. Same lockout concerns as userEditError, batched so a bulk
+ * delete is checked as a whole: never delete your own account, and never wipe out the last active
+ * superadmin. Returns a reason to reject the whole selection, or null if allowed.
+ */
+export function userDeleteError(
+  meId: number,
+  targets: { id: number; role: Role; status: "active" | "disabled" }[],
+  activeSuperadmins: number,
+): "self" | "last_superadmin" | null {
+  if (targets.some((t) => t.id === meId)) return "self";
+  const removedActiveSupers = targets.filter(
+    (t) => t.role === "superadmin" && t.status === "active",
+  ).length;
+  if (activeSuperadmins - removedActiveSupers < 1) return "last_superadmin";
+  return null;
+}

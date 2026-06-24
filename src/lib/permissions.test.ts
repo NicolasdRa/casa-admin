@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { can, defaultEntryCurrency, mayReimburse, userEditError } from "./permissions.ts";
+import {
+  can,
+  defaultEntryCurrency,
+  mayReimburse,
+  userDeleteError,
+  userEditError,
+} from "./permissions.ts";
 
 const su = { id: 1, role: "superadmin" as const };
 const su2 = { id: 2, role: "superadmin" as const };
@@ -22,6 +28,50 @@ test("userEditError: cannot demote/disable the last active superadmin", () => {
 
 test("userEditError: ordinary edits allowed", () => {
   assert.equal(userEditError(su, admin, { role: "user", status: "disabled" }, 2), null);
+});
+
+test("userDeleteError: cannot delete yourself (anti-lockout)", () => {
+  assert.equal(userDeleteError(1, [{ id: 1, role: "superadmin", status: "active" }], 2), "self");
+  // ...even mixed into a bulk selection
+  assert.equal(
+    userDeleteError(
+      1,
+      [
+        { id: 3, role: "admin", status: "active" },
+        { id: 1, role: "superadmin", status: "active" },
+      ],
+      2,
+    ),
+    "self",
+  );
+});
+
+test("userDeleteError: cannot remove the last active superadmin", () => {
+  assert.equal(
+    userDeleteError(1, [{ id: 2, role: "superadmin", status: "active" }], 1),
+    "last_superadmin",
+  );
+  // bulk that wipes out every active superadmin
+  assert.equal(
+    userDeleteError(
+      1,
+      [
+        { id: 2, role: "superadmin", status: "active" },
+        { id: 4, role: "superadmin", status: "active" },
+      ],
+      2,
+    ),
+    "last_superadmin",
+  );
+  // fine when an active superadmin survives
+  assert.equal(userDeleteError(1, [{ id: 2, role: "superadmin", status: "active" }], 2), null);
+  // a disabled superadmin doesn't count toward the active total, so deleting it is fine
+  assert.equal(userDeleteError(1, [{ id: 2, role: "superadmin", status: "disabled" }], 1), null);
+});
+
+test("userDeleteError: ordinary deletes allowed", () => {
+  assert.equal(userDeleteError(1, [{ id: 3, role: "admin", status: "active" }], 1), null);
+  assert.equal(userDeleteError(1, [{ id: 3, role: "user", status: "disabled" }], 1), null);
 });
 
 test("superadmin-only capabilities", () => {
