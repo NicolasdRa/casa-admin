@@ -1,6 +1,7 @@
 import { A, action, createAsync, query, useSubmission } from "@solidjs/router";
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { AppShell } from "~/components/AppShell";
+import { useConfirm } from "~/components/ConfirmProvider";
 import { FxPreview } from "~/components/FxPreview";
 import { Modal } from "~/components/Modal";
 import { ensureFxRate } from "~/db/bna";
@@ -195,6 +196,7 @@ export const route = {
 
 export default function Expenses() {
   const { t, locale } = useI18n();
+  const confirm = useConfirm();
   const expenses = createAsync(() => listExpensesQuery(), { initialValue: [] });
   const categories = createAsync(() => listCategoriesQuery(), { initialValue: [] });
   const suppliers = createAsync(() => listSuppliersQuery(), { initialValue: [] });
@@ -596,12 +598,19 @@ export default function Expenses() {
                             type="submit"
                             class="menu-item"
                             disabled={pendingId(reSub) === e.id}
-                            onClick={(ev) => {
-                              if (!confirm(t("expenses.confirmReimburse"))) {
-                                ev.preventDefault();
-                                return;
+                            onClick={async (ev) => {
+                              ev.preventDefault();
+                              const button = ev.currentTarget;
+                              const form = button.form;
+                              if (
+                                await confirm({
+                                  message: t("expenses.confirmReimburse"),
+                                  danger: true,
+                                })
+                              ) {
+                                closePopover(button);
+                                form?.requestSubmit();
                               }
-                              closePopover(ev.currentTarget);
                             }}
                           >
                             {pendingId(reSub) === e.id
@@ -624,12 +633,19 @@ export default function Expenses() {
                             type="submit"
                             class="menu-item"
                             disabled={pendingId(settleSub) === e.id}
-                            onClick={(ev) => {
-                              if (!confirm(t("expenses.confirmSettle"))) {
-                                ev.preventDefault();
-                                return;
+                            onClick={async (ev) => {
+                              ev.preventDefault();
+                              const button = ev.currentTarget;
+                              const form = button.form;
+                              if (
+                                await confirm({
+                                  message: t("expenses.confirmSettle"),
+                                  danger: true,
+                                })
+                              ) {
+                                closePopover(button);
+                                form?.requestSubmit();
                               }
-                              closePopover(ev.currentTarget);
                             }}
                           >
                             {pendingId(settleSub) === e.id

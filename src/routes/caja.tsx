@@ -1,6 +1,7 @@
 import { action, createAsync, query, redirect, useSubmission } from "@solidjs/router";
 import { createMemo, For, Show } from "solid-js";
 import { AppShell } from "~/components/AppShell";
+import { useConfirm } from "~/components/ConfirmProvider";
 import { Modal } from "~/components/Modal";
 import { createCashEntry, deleteCashEntry, listCashLedger } from "~/db/cash";
 import { db } from "~/db/index";
@@ -83,6 +84,7 @@ const removeCashEntry = action(async (form: FormData) => {
 
 export default function Caja() {
   const { t, locale } = useI18n();
+  const confirm = useConfirm();
   const ledger = createAsync(() => ledgerQuery(), { initialValue: [] });
   const partners = createAsync(() => partnersQuery(), { initialValue: [] });
   const statements = createAsync(() => statementsQuery(), { initialValue: [] });
@@ -314,12 +316,16 @@ export default function Caja() {
                             type="submit"
                             class="menu-item menu-item-danger"
                             disabled={removing.pending}
-                            onClick={(ev) => {
-                              if (!confirm(t("caja.confirmDelete"))) {
-                                ev.preventDefault();
-                                return;
+                            onClick={async (ev) => {
+                              ev.preventDefault();
+                              const button = ev.currentTarget;
+                              const form = button.form;
+                              if (
+                                await confirm({ message: t("caja.confirmDelete"), danger: true })
+                              ) {
+                                closePopover(button);
+                                form?.requestSubmit();
                               }
-                              closePopover(ev.currentTarget);
                             }}
                           >
                             {t("caja.delete")}

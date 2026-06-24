@@ -216,6 +216,31 @@ input:focus-visible {
   border-color: var(--navy);
 }
 
+/* Destructive primary — confirm dialog's accept button for delete / irreversible actions */
+.btn-danger {
+  color: var(--on-navy);
+  background: var(--neg);
+  border-color: var(--neg);
+}
+.btn-danger:hover {
+  background: var(--neg);
+  border-color: var(--neg);
+  filter: brightness(0.92);
+}
+
+/* Confirm dialog body: prompt text + right-aligned action row */
+.confirm-message {
+  margin: 0;
+  color: var(--ink);
+  line-height: 1.5;
+}
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
 /* Compact buttons live inside dense tables/rows */
 table button,
 .btn-sm {

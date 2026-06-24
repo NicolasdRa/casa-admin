@@ -1,6 +1,7 @@
 import { action, createAsync, query, useSubmission } from "@solidjs/router";
 import { createSignal, For, Show } from "solid-js";
 import { AppShell } from "~/components/AppShell";
+import { useConfirm } from "~/components/ConfirmProvider";
 import { Modal } from "~/components/Modal";
 import { db } from "~/db/index";
 import { createSupplier, deleteSupplier, listSuppliers, renameSupplier } from "~/db/suppliers";
@@ -47,6 +48,7 @@ export const route = { preload: () => listSuppliersQuery() };
 
 export default function Suppliers() {
   const { t } = useI18n();
+  const confirm = useConfirm();
   const suppliers = createAsync(() => listSuppliersQuery(), { initialValue: [] });
   const adding = useSubmission(addSupplier);
   const editing = useSubmission(editSupplier);
@@ -156,8 +158,14 @@ export default function Suppliers() {
                         <button
                           type="submit"
                           class="btn-ghost"
-                          onClick={(e) => {
-                            if (!confirm(t("suppliers.confirmDelete"))) e.preventDefault();
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            const form = e.currentTarget.form;
+                            if (
+                              await confirm({ message: t("suppliers.confirmDelete"), danger: true })
+                            ) {
+                              form?.requestSubmit();
+                            }
                           }}
                         >
                           {t("suppliers.delete")}

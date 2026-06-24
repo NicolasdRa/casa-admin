@@ -1,6 +1,7 @@
 import { action, createAsync, query, redirect, useSubmission } from "@solidjs/router";
 import { createSignal, For, Show } from "solid-js";
 import { AppShell } from "~/components/AppShell";
+import { useConfirm } from "~/components/ConfirmProvider";
 import { Modal } from "~/components/Modal";
 import {
   CATEGORY_GROUPS,
@@ -62,6 +63,7 @@ export const route = { preload: () => categoriesQuery() };
 
 export default function Categories() {
   const { t } = useI18n();
+  const confirm = useConfirm();
   const categories = createAsync(() => categoriesQuery(), { initialValue: [] });
   const adding = useSubmission(addCategory);
   const editing = useSubmission(editCategory);
@@ -178,8 +180,17 @@ export default function Categories() {
                         <button
                           type="submit"
                           class="btn-ghost"
-                          onClick={(e) => {
-                            if (!confirm(t("categories.confirmDelete"))) e.preventDefault();
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            const form = e.currentTarget.form;
+                            if (
+                              await confirm({
+                                message: t("categories.confirmDelete"),
+                                danger: true,
+                              })
+                            ) {
+                              form?.requestSubmit();
+                            }
                           }}
                         >
                           {t("categories.delete")}

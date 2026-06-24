@@ -22,6 +22,9 @@ export const es = {
     manualRate: "Cambio manual",
     actions: "Acciones",
     edit: "Editar",
+    confirm: "Confirmar",
+    cancel: "Cancelar",
+    confirmTitle: "Confirmá la acción",
   },
   fx: {
     noRate: "Sin cambio BNA para esta fecha — se requerirá un cambio manual.",

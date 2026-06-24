@@ -22,6 +22,9 @@ export const en = {
     manualRate: "Manual rate",
     actions: "Actions",
     edit: "Edit",
+    confirm: "Confirm",
+    cancel: "Cancel",
+    confirmTitle: "Please confirm",
   },
   fx: {
     noRate: "No BNA rate for this date — a manual rate will be required.",
