@@ -2,7 +2,9 @@ import { errorCode } from "./errors.ts";
 
 type AuditAction = "create" | "update" | "delete";
 type Recorder = (action: AuditAction, entity: string) => Promise<void>;
-type Outcome = { ok: true } | { error: string };
+// Exclusive keys (`error?: never` / `ok?: never`) so callers can read result?.ok and result?.error
+// without narrowing — a plain `{ ok: true } | { error: string }` union forbids reading either.
+type Outcome = { ok: true; error?: never } | { ok?: never; error: string };
 
 // Default recorder is loaded lazily: session.ts reaches into the db + vinxi request context, which
 // the node:test runner can't resolve. Tests inject a fake `record`, so this branch is app-only.
