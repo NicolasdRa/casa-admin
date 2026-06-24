@@ -224,7 +224,7 @@ export default function Expenses() {
   // Translate a returned error code to a human, localized message; raw codes never render.
   const errMsg = (code: string) => t(`expenses.err_${code}` as Parameters<typeof t>[0]) as string;
   // Which row's reimburse / settle is mid-flight (so only that button shows pending).
-  const pendingId = (sub: typeof reSub) =>
+  const pendingId = (sub: typeof reSub | typeof settleSub) =>
     sub.pending ? Number((sub.input?.[0] as FormData | undefined)?.get("id")) : null;
 
   let amountEl: HTMLInputElement | undefined;
