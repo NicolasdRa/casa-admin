@@ -12,6 +12,7 @@ import {
   listExpensesWithPayer,
   markExpenseReimbursed,
   receiptPlan,
+  reimburseExpenses,
   safeExt,
   setExpenseReceipt,
   updateExpenseMeta,
@@ -73,6 +74,8 @@ const meAndUsersQuery = query(async () => {
   return {
     meId: me.id,
     canReimburse: mayReimburse(me),
+    // CA-117: bulk reimburse is one tier stricter than the per-row action.
+    canBulkReimburse: me.role === "superadmin" && mayReimburse(me),
     defaultCurrency: defaultEntryCurrency(me.role),
     users,
   };
@@ -151,6 +154,20 @@ const reimburseExpense = action(async (form: FormData) => {
   });
 }, "reimburseExpense");
 
+// CA-117: bulk-reimburse the selected pending co-host expenses. Superadmin-only — a step above the
+// per-row reimburse (admin+), since it fires across many rows at once. The owner-mapping + pending
+// guards still hold per row in reimburseExpenses; the batch is all-or-nothing.
+const bulkReimburseExpenses = action(async (form: FormData) => {
+  "use server";
+  const me = await requireUser();
+  if (me.role !== "superadmin" || !mayReimburse(me)) return { error: "forbidden" };
+  const ids = form.getAll("id").map(Number);
+  const today = new Date().toISOString().slice(0, 10);
+  return runMutation({ audit: ["update", "expense"] }, () => {
+    reimburseExpenses(db, ids, me.id, today);
+  });
+}, "bulkReimburseExpenses");
+
 // EX-12: repay an owner for an expense they fronted. Records the Caja withdrawal (dated today, when
 // the cash leaves the box) and marks the expense reimbursed. Same permission gate as reimburse.
 const settleExpenseAction = action(async (form: FormData) => {
@@ -202,7 +219,13 @@ export default function Expenses() {
   const suppliers = createAsync(() => listSuppliersQuery(), { initialValue: [] });
   const userTotals = createAsync(() => userTotalsQuery(), { initialValue: [] });
   const me = createAsync(() => meAndUsersQuery(), {
-    initialValue: { meId: 0, canReimburse: false, defaultCurrency: "EUR" as const, users: [] },
+    initialValue: {
+      meId: 0,
+      canReimburse: false,
+      canBulkReimburse: false,
+      defaultCurrency: "EUR" as const,
+      users: [],
+    },
   });
   // Default the date to today — the heaviest path is entering today's spend; still freely editable.
   const [date, setDate] = createSignal(todayLocal());
@@ -210,11 +233,18 @@ export default function Expenses() {
   const [currency, setCurrency] = createSignal<"ARS" | "EUR">("EUR");
   // EX-10: filter the ledger by payer. "all" | "none" (unassigned) | user id.
   const [payerFilter, setPayerFilter] = createSignal<string>("all");
+  // CA-115: filter by supplier. "all" | "none" (no supplier) | supplier id.
+  const [supplierFilter, setSupplierFilter] = createSignal<string>("all");
+  // CA-116: optional sort by supplier name. null = keep the default date-desc order from the query.
+  const [supplierSort, setSupplierSort] = createSignal<"asc" | "desc" | null>(null);
+  // CA-117: bulk-reimburse selection, a Set of expense ids.
+  const [selected, setSelected] = createSignal<Set<number>>(new Set());
   // Add-expense lives in a modal so the ledger keeps the page; opened from the primary action.
   const submission = useSubmission(addExpense);
   const reSub = useSubmission(reimburseExpense);
   const settleSub = useSubmission(settleExpenseAction);
   const editSub = useSubmission(editExpense);
+  const bulkReSub = useSubmission(bulkReimburseExpenses);
   // The expense whose edit modal is open (null = closed). Holds the row so the form pre-fills.
   const [editing, setEditing] = createSignal<ExpenseRow | null>(null);
   const supplierNameById = createMemo(() => new Map(suppliers().map((s) => [s.id, s.name])));
@@ -242,11 +272,44 @@ export default function Expenses() {
     if (editSub.result?.ok) setEditing(null);
   });
 
+  // Filter + sort are client-side: the ledger is already loaded and small, so a round-trip would
+  // only add latency. Payer (EX-10) and supplier (CA-115) filters compose; supplier sort (CA-116)
+  // is applied last, falling back to the query's date-desc order when off.
   const visible = createMemo(() => {
-    const f = payerFilter();
-    if (f === "all") return expenses();
-    if (f === "none") return expenses().filter((e) => e.payerUserId == null);
-    return expenses().filter((e) => e.payerUserId === Number(f));
+    const p = payerFilter();
+    const s = supplierFilter();
+    let rows = expenses();
+    if (p === "none") rows = rows.filter((e) => e.payerUserId == null);
+    else if (p !== "all") rows = rows.filter((e) => e.payerUserId === Number(p));
+    if (s === "none") rows = rows.filter((e) => e.supplierId == null);
+    else if (s !== "all") rows = rows.filter((e) => e.supplierId === Number(s));
+    const dir = supplierSort();
+    if (dir) {
+      const sign = dir === "asc" ? 1 : -1;
+      rows = [...rows].sort(
+        (a, b) =>
+          sign * (supplierName(a.supplierId) ?? "").localeCompare(supplierName(b.supplierId) ?? ""),
+      );
+    }
+    return rows;
+  });
+
+  // CA-117: only pending co-host rows are reimbursable, so the bulk machinery operates on those —
+  // non-pending rows get no checkbox, keeping the selection always valid for the action.
+  const selectable = createMemo(() => visible().filter((e) => e.reimbursement === "pending"));
+  const toggle = (id: number) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  const allSelected = () =>
+    selectable().length > 0 && selectable().every((e) => selected().has(e.id));
+  const toggleAll = () =>
+    setSelected(allSelected() ? new Set() : new Set(selectable().map((e) => e.id)));
+  // Drop the selection once a bulk reimburse lands so the (now non-pending) ids don't linger.
+  createEffect(() => {
+    if (bulkReSub.result?.ok) setSelected(new Set());
   });
 
   const unattributed = createMemo(() => {
@@ -473,6 +536,18 @@ export default function Expenses() {
           </p>
         )}
       </Show>
+      <Show when={bulkReSub.result?.error}>
+        {(code) => (
+          <p class="alert alert-error" role="alert">
+            {errMsg(code())}
+          </p>
+        )}
+      </Show>
+      <Show when={bulkReSub.result?.ok}>
+        <p class="alert alert-success" role="status">
+          {t("expenses.saved")}
+        </p>
+      </Show>
 
       <Show when={unattributed().count > 0}>
         <p class="alert alert-warn">
@@ -483,7 +558,7 @@ export default function Expenses() {
         </p>
       </Show>
 
-      {/* EX-10: discriminate the ledger by payer. */}
+      {/* EX-10 + CA-115: discriminate the ledger by payer and/or supplier. */}
       <div class="toolbar filter">
         <span class="toolbar-label">{t("expenses.filterByPayer")}</span>
         <select value={payerFilter()} onChange={(e) => setPayerFilter(e.currentTarget.value)}>
@@ -491,15 +566,75 @@ export default function Expenses() {
           <For each={me().users}>{(u) => <option value={u.id}>{u.name}</option>}</For>
           <option value="none">{t("expenses.unassigned")}</option>
         </select>
+        <span class="toolbar-label">{t("expenses.filterBySupplier")}</span>
+        <select
+          value={supplierFilter()}
+          onChange={(e) => setSupplierFilter(e.currentTarget.value)}
+          aria-label={t("expenses.filterBySupplier")}
+        >
+          <option value="all">{t("expenses.allSuppliers")}</option>
+          <For each={suppliers()}>{(s) => <option value={s.id}>{s.name}</option>}</For>
+          <option value="none">{t("expenses.unassigned")}</option>
+        </select>
+        {/* CA-117: bulk reimburse bar — superadmin-only, appears only with a live selection. */}
+        <Show when={me().canBulkReimburse && selected().size > 0}>
+          <span class="toolbar-label">
+            {selected().size} {t("expenses.selected")}
+          </span>
+          <form action={bulkReimburseExpenses} method="post">
+            <For each={[...selected()]}>{(id) => <input type="hidden" name="id" value={id} />}</For>
+            <button
+              type="submit"
+              class="btn-ghost"
+              disabled={bulkReSub.pending}
+              onClick={async (ev) => {
+                ev.preventDefault();
+                const f = ev.currentTarget.form;
+                if (
+                  await confirm({ message: t("expenses.confirmReimburseSelected"), danger: true })
+                ) {
+                  f?.requestSubmit();
+                }
+              }}
+            >
+              {bulkReSub.pending ? t("common.saving") : t("expenses.reimburseSelected")}
+            </button>
+          </form>
+        </Show>
       </div>
 
       <div class="panel table-scroll">
         <table class="cards">
           <thead>
             <tr>
+              <Show when={me().canBulkReimburse}>
+                <th class="col-check">
+                  <input
+                    type="checkbox"
+                    checked={allSelected()}
+                    onChange={toggleAll}
+                    disabled={selectable().length === 0}
+                    aria-label={t("common.actions")}
+                  />
+                </th>
+              </Show>
               <th title={t("common.date")}>{t("common.date")}</th>
               <th title={t("expenses.detail")}>{t("expenses.detail")}</th>
-              <th title={t("expenses.supplier")}>{t("expenses.supplier")}</th>
+              <th title={t("expenses.supplier")}>
+                <button
+                  type="button"
+                  class="th-sort"
+                  onClick={() =>
+                    setSupplierSort((d) => (d === "asc" ? "desc" : d === "desc" ? null : "asc"))
+                  }
+                  aria-label={t("expenses.sortBySupplier")}
+                >
+                  {t("expenses.supplier")}{" "}
+                  <span aria-hidden="true">
+                    {supplierSort() === "asc" ? "▲" : supplierSort() === "desc" ? "▼" : "↕"}
+                  </span>
+                </button>
+              </th>
               <th title={t("expenses.payer")}>{t("expenses.payer")}</th>
               <th class="num">EUR</th>
               <th class="num">ARS</th>
@@ -518,7 +653,7 @@ export default function Expenses() {
               each={visible()}
               fallback={
                 <tr>
-                  <td colspan="10" class="note">
+                  <td colspan={me().canBulkReimburse ? 11 : 10} class="note">
                     {t("expenses.empty")}
                   </td>
                 </tr>
@@ -526,6 +661,20 @@ export default function Expenses() {
             >
               {(e) => (
                 <tr>
+                  <Show when={me().canBulkReimburse}>
+                    {/* Only pending co-host rows are selectable; others keep an empty cell so the
+                        column stays aligned. */}
+                    <td class="col-check">
+                      <Show when={e.reimbursement === "pending"}>
+                        <input
+                          type="checkbox"
+                          checked={selected().has(e.id)}
+                          onChange={() => toggle(e.id)}
+                          aria-label={e.detail ?? e.date}
+                        />
+                      </Show>
+                    </td>
+                  </Show>
                   <td>{e.date}</td>
                   <td data-label={t("expenses.detail")}>{e.detail}</td>
                   <td data-label={t("expenses.supplier")}>{supplierName(e.supplierId) ?? "—"}</td>

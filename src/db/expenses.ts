@@ -229,3 +229,11 @@ export function markExpenseReimbursed(db: Db, expenseId: number, byUserId: numbe
     .all();
   return row;
 }
+
+/** CA-117: bulk-reimburse expenses, all-or-nothing — the transaction rolls back if *any* id isn't a
+ *  pending co-host expense (markExpenseReimbursed throws), so a partial batch can never half-apply. */
+export function reimburseExpenses(db: Db, ids: number[], byUserId: number, date: string) {
+  db.transaction((tx) => {
+    for (const id of ids) markExpenseReimbursed(tx, id, byUserId, date);
+  });
+}

@@ -164,6 +164,13 @@ export const es = {
     totalsByUser: "Totales por usuario",
     filterByPayer: "Filtrar por pagador",
     allUsers: "Todos",
+    filterBySupplier: "Filtrar por proveedor",
+    allSuppliers: "Todos",
+    sortBySupplier: "Ordenar por proveedor",
+    selected: "seleccionados",
+    reimburseSelected: "Reembolsar seleccionados",
+    confirmReimburseSelected:
+      "¿Marcar los gastos seleccionados como reembolsados? No se puede deshacer.",
     unassigned: "Sin asignar",
     unattributed: "{count} gastos ({total} €) sin asignar — asigná un pagador para incluirlos.",
     reimbursement: "Reembolso",

@@ -9,6 +9,7 @@ import {
   listExpensesWithPayer,
   markExpenseReimbursed,
   receiptPlan,
+  reimburseExpenses,
   reimbursementStatus,
   safeExt,
   setExpenseReceipt,
@@ -190,6 +191,44 @@ test("markExpenseReimbursed rejects a reimburser who is not an owner (EX-9)", ()
   });
   // co-host has no partner mapping -> cannot be the reimburser
   assert.throws(() => markExpenseReimbursed(db, e.id, cohost.id, "2026-06-20"));
+});
+
+test("reimburseExpenses bulk-reimburses several pending co-host expenses (CA-117)", () => {
+  const { db, cohost, admin } = dbWithOwnerAndCohost();
+  const ids = [1, 2, 3].map(
+    () =>
+      createExpense(db, {
+        date: "2026-06-18",
+        currency: "EUR",
+        amount: 1000,
+        paidByUserId: cohost.id,
+      }).id,
+  );
+  reimburseExpenses(db, ids, admin.id, "2026-06-20");
+  for (const id of ids) {
+    const row = getExpenseById(db, id);
+    assert.equal(row?.reimbursedAt, "2026-06-20");
+    assert.equal(row?.reimbursedByUserId, admin.id);
+  }
+});
+
+test("reimburseExpenses is all-or-nothing: one bad id rolls back the whole batch (CA-117)", () => {
+  const { db, owner, cohost, admin } = dbWithOwnerAndCohost();
+  const good = createExpense(db, {
+    date: "2026-06-18",
+    currency: "EUR",
+    amount: 1000,
+    paidByUserId: cohost.id,
+  }).id;
+  // owner-paid -> not_applicable, so markExpenseReimbursed throws; the good row must NOT persist.
+  const bad = createExpense(db, {
+    date: "2026-06-18",
+    currency: "EUR",
+    amount: 1000,
+    paidByUserId: owner.id,
+  }).id;
+  assert.throws(() => reimburseExpenses(db, [good, bad], admin.id, "2026-06-20"));
+  assert.equal(getExpenseById(db, good)?.reimbursedAt, null);
 });
 
 test("updateExpenseMeta edits classification and leaves the money/FX snapshot intact", () => {
