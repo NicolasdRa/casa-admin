@@ -65,7 +65,7 @@ export interface ParsedBooking {
   date: string;
   guest: string;
   amountEurCents: number;
-  type: "booking" | "cancellation" | "reimbursement";
+  type: "booking" | "cancellation" | "damage";
   sheetCommissionCents: number | null;
   sourceRow: number;
 }
@@ -97,8 +97,16 @@ export interface Reject {
 function bookingType(guest: string): ParsedBooking["type"] {
   const g = lc(guest);
   if (g.includes("cancelaci")) return "cancellation";
-  if (g.includes("reinbursement") || g.includes("reimbursement") || g.includes("reembolso"))
-    return "reimbursement";
+  // Legacy sheets labelled guest-paid damage as "damage reinbursement/reembolso" — all are the
+  // damage type now (the "reimbursement" wording belonged to the co-host expense flow, not bookings).
+  if (
+    g.includes("damage") ||
+    g.includes("daño") ||
+    g.includes("reinbursement") ||
+    g.includes("reimbursement") ||
+    g.includes("reembolso")
+  )
+    return "damage";
   return "booking";
 }
 

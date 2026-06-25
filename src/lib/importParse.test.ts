@@ -295,7 +295,7 @@ test("parseBookings: unpivots blocks, detects type, skips empty rows", () => {
   assert.equal(mariano?.amountEurCents, 46268);
   assert.equal(mariano?.year, "2026");
   assert.equal(mariano?.type, "booking");
-  assert.equal(bookings.find((b) => b.guest.includes("damage"))?.type, "reimbursement");
+  assert.equal(bookings.find((b) => b.guest.includes("damage"))?.type, "damage");
   assert.equal(bookings.find((b) => b.guest.includes("cancelación"))?.type, "cancellation");
   // empty 2026 row #11 (only €0,00 commission) is not a booking
   assert.equal(bookings.filter((b) => b.year === "2026").length, 2);

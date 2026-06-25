@@ -72,8 +72,12 @@ export function ownerSettlement(db: Db): SettlementResult {
   );
   const fairShareById = new Map(shares.map((s) => [s.partnerId, s.amountEur]));
 
+  // Rental cobros (type "income") raise the Caja running balance but are NOT a settlement claim:
+  // the income is already split by ownership via incomeShare (accrual). Folding the receipt in here
+  // too would double-count it. cashAccount stays the partner's own contributions − withdrawals.
   const cashByPartner = new Map<number, number>(owners.map((o) => [o.id, 0]));
   for (const c of db.select().from(schema.cashEntries).all()) {
+    if (c.type === "income") continue;
     if (cashByPartner.has(c.partnerId))
       cashByPartner.set(c.partnerId, (cashByPartner.get(c.partnerId) ?? 0) + c.amountEur);
   }

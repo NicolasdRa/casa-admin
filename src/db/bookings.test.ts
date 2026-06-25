@@ -1,12 +1,21 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { CodedError } from "../lib/errors.ts";
 import {
   accruedCommissionEur,
   createBooking,
+  deleteBooking,
+  deleteBookings,
+  editBookingDetails,
+  findConflicts,
   listBookings,
+  mergeOccupancy,
   occupancyByMonth,
+  occupancyPct,
   summarizeBookings,
 } from "./bookings.ts";
+import { bookingPayments, deleteCashEntry, registerBookingPayment } from "./cash.ts";
+import { upsertReservations } from "./externalReservations.ts";
 import { upsertFxRate } from "./fx.ts";
 import { updateSettings } from "./settings.ts";
 import { makeTestDb } from "./testdb.ts";
@@ -266,11 +275,186 @@ test("listBookings filters by channel", () => {
   assert.equal(r[0].guest, "Air");
 });
 
+test("listBookings filters by co-host", () => {
+  const db = dbWithRates();
+  createBooking(db, {
+    guest: "F",
+    date: "2026-06-18",
+    currency: "EUR",
+    amount: 100,
+    coHostUserId: 5,
+  });
+  createBooking(db, {
+    guest: "G",
+    date: "2026-06-18",
+    currency: "EUR",
+    amount: 100,
+    coHostUserId: 6,
+  });
+  const r = listBookings(db, { coHostUserId: 5 });
+  assert.equal(r.length, 1);
+  assert.equal(r[0].guest, "F");
+});
+
+test("occupancyPct uses the calendar month's night count (days-in-month, leap-aware)", () => {
+  assert.equal(occupancyPct("2026-06", 15), 50); // June has 30 nights
+  assert.equal(occupancyPct("2026-07", 31), 100); // July has 31 nights → fully booked
+  assert.equal(occupancyPct("2024-02", 29), 100); // leap Feb has 29 nights
+  assert.equal(occupancyPct("2026-02", 29), 104); // non-leap Feb has 28 → boundary stay >100%
+});
+
+test("occupancyPct is zero with no nights", () => {
+  assert.equal(occupancyPct("2026-06", 0), 0);
+});
+
+test("listBookings date range filters check-in inclusively (occupancy date range)", () => {
+  const db = dbWithRates();
+  const r1 = 1000; // manualRate so boundary dates need no seeded BNA quote
+  createBooking(db, {
+    guest: "May",
+    date: "2026-05-31",
+    currency: "EUR",
+    amount: 100,
+    manualRate: r1,
+  });
+  createBooking(db, {
+    guest: "JunIn",
+    date: "2026-06-01",
+    currency: "EUR",
+    amount: 100,
+    manualRate: r1,
+  });
+  createBooking(db, {
+    guest: "JunOut",
+    date: "2026-06-30",
+    currency: "EUR",
+    amount: 100,
+    manualRate: r1,
+  });
+  createBooking(db, {
+    guest: "Jul",
+    date: "2026-07-01",
+    currency: "EUR",
+    amount: 100,
+    manualRate: r1,
+  });
+  const r = occupancyByMonth(listBookings(db, { from: "2026-06-01", to: "2026-06-30" }));
+  assert.equal(r.length, 1);
+  assert.equal(r[0].month, "2026-06");
+  assert.deepEqual(
+    r[0].bookings.map((b) => b.guest).sort(),
+    ["JunIn", "JunOut"], // boundary dates included; May/Jul excluded
+  );
+});
+
 test("occupancyByMonth carries the channel for the calendar", () => {
   const r = occupancyByMonth([
     { date: "2026-06-05", guest: "A", type: "booking", channel: "airbnb" },
   ]);
   assert.equal(r[0].bookings[0].channel, "airbnb");
+});
+
+test("deleteBooking removes the row", () => {
+  const db = dbWithRates();
+  const b = createBooking(db, { guest: "Gone", date: "2026-06-18", currency: "EUR", amount: 100 });
+  deleteBooking(db, b.id);
+  assert.equal(listBookings(db).length, 0);
+});
+
+test("deleteBooking refuses a booking that has a cash receipt (delete the receipt first)", () => {
+  const db = dbWithRates();
+  const b = createBooking(db, {
+    guest: "Paid",
+    date: "2026-06-18",
+    currency: "EUR",
+    amount: 10000,
+  });
+  registerBookingPayment(db, { bookingId: b.id, partnerId: 1, date: "2026-06-20" });
+  assert.throws(
+    () => deleteBooking(db, b.id),
+    (e) => e instanceof CodedError && e.code === "hasPayment",
+  );
+  assert.equal(listBookings(db).length, 1); // untouched — the receipt is still its source of truth
+
+  deleteCashEntry(db, bookingPayments(db)[0].id); // remove the receipt…
+  deleteBooking(db, b.id); // …now it deletes
+  assert.equal(listBookings(db).length, 0);
+});
+
+test("deleteBookings removes every listed row, all-or-nothing", () => {
+  const db = dbWithRates();
+  const a = createBooking(db, { guest: "A", date: "2026-06-18", currency: "EUR", amount: 100 });
+  const b = createBooking(db, { guest: "B", date: "2026-06-19", currency: "EUR", amount: 100 });
+  createBooking(db, { guest: "C", date: "2026-06-19", currency: "EUR", amount: 100 });
+  deleteBookings(db, [a.id, b.id]);
+  const left = listBookings(db);
+  assert.equal(left.length, 1);
+  assert.equal(left[0].guest, "C");
+});
+
+test("editBookingDetails updates guest/channel/checkOut, leaving the FX snapshot untouched", () => {
+  const db = dbWithRates();
+  const b = createBooking(db, {
+    guest: "Typo",
+    date: "2026-06-18",
+    currency: "EUR",
+    amount: 10000,
+    channel: "direct",
+  });
+  const edited = editBookingDetails(db, b.id, {
+    guest: "Fixed",
+    channel: "airbnb",
+    checkOut: "2026-06-21",
+  });
+  assert.equal(edited.guest, "Fixed");
+  assert.equal(edited.channel, "airbnb");
+  assert.equal(edited.checkOut, "2026-06-21");
+  // The immutable snapshot is preserved exactly.
+  assert.equal(edited.amount, b.amount);
+  assert.equal(edited.currency, b.currency);
+  assert.equal(edited.fxRate, b.fxRate);
+  assert.equal(edited.amountEur, b.amountEur);
+  assert.equal(edited.amountArs, b.amountArs);
+  assert.equal(edited.commissionEur, b.commissionEur);
+});
+
+test("editBookingDetails rejects a check-out on/before check-in", () => {
+  const db = dbWithRates();
+  const b = createBooking(db, { guest: "X", date: "2026-06-18", currency: "EUR", amount: 100 });
+  assert.throws(() => editBookingDetails(db, b.id, { guest: "X", checkOut: "2026-06-18" }));
+});
+
+test("editBookingDetails moves the check-in date but keeps the FX snapshot frozen", () => {
+  const db = dbWithRates();
+  const b = createBooking(db, { guest: "X", date: "2026-06-18", currency: "EUR", amount: 10000 });
+  const edited = editBookingDetails(db, b.id, { guest: "X", date: "2026-06-19" });
+  assert.equal(edited.date, "2026-06-19"); // calendar date corrected
+  // …but the rate snapshotted at entry is untouched — not re-fetched for the new date (1200).
+  assert.equal(edited.fxRate, b.fxRate); // still 1050
+  assert.equal(edited.fxRateDate, b.fxRateDate); // still 2026-06-18
+  assert.equal(edited.amountArs, b.amountArs);
+  assert.equal(edited.amountEur, b.amountEur);
+});
+
+test("editBookingDetails validates check-out against the NEW check-in date", () => {
+  const db = dbWithRates();
+  const b = createBooking(db, {
+    guest: "X",
+    date: "2026-06-18",
+    checkOut: "2026-06-19",
+    currency: "EUR",
+    amount: 100,
+  });
+  // check-out 06-19 was valid against check-in 06-18; moving check-in to 06-19 makes it invalid.
+  assert.throws(() =>
+    editBookingDetails(db, b.id, { guest: "X", date: "2026-06-19", checkOut: "2026-06-19" }),
+  );
+});
+
+test("editBookingDetails rejects an empty guest", () => {
+  const db = dbWithRates();
+  const b = createBooking(db, { guest: "Y", date: "2026-06-18", currency: "EUR", amount: 100 });
+  assert.throws(() => editBookingDetails(db, b.id, { guest: "  " }));
 });
 
 test("accruedCommissionEur sums commission across bookings (BK-3)", () => {
@@ -285,4 +469,102 @@ test("accruedCommissionEur sums commission across bookings (BK-3)", () => {
     type: "cancellation",
   }); // 0
   assert.equal(accruedCommissionEur(db), 3000);
+});
+
+test("mergeOccupancy attaches OTA blocks to their start month without inflating nights", () => {
+  const months = occupancyByMonth([
+    {
+      date: "2026-07-02",
+      checkOut: "2026-07-06",
+      guest: "Smith",
+      type: "booking",
+      channel: "direct",
+    },
+  ]);
+  const merged = mergeOccupancy(months, [
+    { start: "2026-07-10", end: "2026-07-14", channel: "airbnb", summary: "Reserved" },
+    { start: "2026-08-01", end: "2026-08-03", channel: "booking", summary: null },
+  ]);
+  const jul = merged.find((m) => m.month === "2026-07");
+  assert.equal(jul?.nights, 4); // unchanged by the block
+  assert.equal(jul?.blocks.length, 1);
+  assert.equal(jul?.blocks[0].channel, "airbnb");
+  // a block in a month with no direct booking still creates a month entry
+  assert.ok(merged.find((m) => m.month === "2026-08"));
+  // months sort newest-first
+  assert.deepEqual(
+    merged.map((m) => m.month),
+    ["2026-08", "2026-07"],
+  );
+});
+
+test("mergeOccupancy sorts bookings and blocks newest-first within a month", () => {
+  const months = occupancyByMonth([
+    {
+      date: "2026-07-02",
+      checkOut: "2026-07-04",
+      guest: "Early",
+      type: "booking",
+      channel: "direct",
+    },
+    {
+      date: "2026-07-20",
+      checkOut: "2026-07-22",
+      guest: "Late",
+      type: "booking",
+      channel: "direct",
+    },
+  ]);
+  const [jul] = mergeOccupancy(months, [
+    { start: "2026-07-05", end: "2026-07-08", channel: "airbnb", summary: "A" },
+    { start: "2026-07-25", end: "2026-07-28", channel: "booking", summary: "B" },
+  ]);
+  assert.deepEqual(
+    jul.bookings.map((b) => b.guest),
+    ["Late", "Early"],
+  );
+  assert.deepEqual(
+    jul.blocks.map((b) => b.start),
+    ["2026-07-25", "2026-07-05"],
+  );
+});
+
+test("findConflicts flags overlapping bookings and OTA blocks, ignores turnover", () => {
+  const db = dbWithRates();
+  createBooking(db, {
+    guest: "Smith",
+    date: "2026-07-01",
+    checkOut: "2026-07-05",
+    currency: "EUR",
+    amount: 10000,
+  });
+  upsertReservations(db, "airbnb", [
+    { uid: "x@a", start: "2026-07-20", end: "2026-07-25", summary: "Reserved" },
+  ]);
+
+  // overlaps the Smith booking
+  const c1 = findConflicts(db, "2026-07-04", "2026-07-08");
+  assert.equal(c1.length, 1);
+  assert.equal(c1[0].source, "booking");
+  assert.equal(c1[0].label, "Smith");
+
+  // overlaps the Airbnb block
+  const c2 = findConflicts(db, "2026-07-22", "2026-07-28");
+  assert.equal(c2.length, 1);
+  assert.equal(c2[0].source, "ota");
+
+  // same-day turnover with the booking → no conflict
+  assert.equal(findConflicts(db, "2026-07-05", "2026-07-10").length, 0);
+});
+
+test("findConflicts excludes a booking from matching itself (edit case)", () => {
+  const db = dbWithRates();
+  const b = createBooking(db, {
+    guest: "Smith",
+    date: "2026-07-01",
+    checkOut: "2026-07-05",
+    currency: "EUR",
+    amount: 10000,
+  });
+  assert.equal(findConflicts(db, "2026-07-01", "2026-07-05", { excludeBookingId: b.id }).length, 0);
 });

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { listCashLedger } from "./cash.ts";
+import { createBooking } from "./bookings.ts";
+import { createCashEntry, listCashLedger, registerBookingPayment } from "./cash.ts";
 import { createExpense, getExpenseById, markExpenseReimbursed } from "./expenses.ts";
 import { upsertFxRate } from "./fx.ts";
 import { createPartner } from "./partners.ts";
@@ -226,4 +227,33 @@ test("backfillSettleExpenses force rewrites a wrongly-dated settle to the expens
   assert.equal(ledger.length, 1); // no duplicate left behind
   assert.equal(ledger[0].date, "2024-02-02");
   assert.equal(ledger[0].amountEur, -5000);
+});
+
+test("a registered cobro is Caja-visible but excluded from the settlement cashAccount (no double-count)", () => {
+  const { db, nico, ana } = setup();
+  // €1000 booking on a date with an FX rate; collected into Nicolás's account.
+  const b = createBooking(db, {
+    guest: "García",
+    date: "2026-06-18",
+    currency: "EUR",
+    amount: 100_000,
+    commissionRate: 0,
+  });
+  registerBookingPayment(db, { bookingId: b.id, partnerId: nico.id, date: "2026-06-18" });
+  // A real own-money contribution from Anastasia, to prove non-income cash still counts.
+  createCashEntry(db, {
+    date: "2026-06-18",
+    partnerId: ana.id,
+    concept: "Aporte",
+    amountEur: 30_000,
+    type: "contribution",
+  });
+
+  const r = ownerSettlement(db);
+  assert.equal(net(r, nico.id).cashAccount, 0); // the €1000 cobro does NOT inflate his claim
+  assert.equal(net(r, ana.id).cashAccount, 30_000); // ordinary contribution still counts
+
+  // …but the cobro is present in the Caja running balance: 1000 (income) + 300 (contribution).
+  assert.equal(listCashLedger(db).length, 2);
+  assert.equal(listCashLedger(db).at(-1)?.runningBalance, 130_000);
 });
