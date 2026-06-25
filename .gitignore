@@ -12,5 +12,6 @@ dist
 *.db-wal
 .env
 .playwright-mcp
+.impeccable
 uploads
 /data/
