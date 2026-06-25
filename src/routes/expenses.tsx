@@ -25,6 +25,7 @@ import { db } from "~/db/index";
 import { settleExpense } from "~/db/settlement";
 import { listUsers } from "~/db/users";
 import { createEntityForm } from "~/lib/createEntityForm";
+import { inDateRange } from "~/lib/dateRange";
 import { useI18n } from "~/lib/i18n";
 import { formatMoney, toCents } from "~/lib/money";
 import { runMutation } from "~/lib/mutation";
@@ -212,6 +213,9 @@ export default function Expenses() {
   const [supplierFilter, setSupplierFilter] = createSignal<string>("all");
   // CA-116: optional sort by supplier name. null = keep the default date-desc order from the query.
   const [supplierSort, setSupplierSort] = createSignal<"asc" | "desc" | null>(null);
+  // CA-99: inclusive date-range filter on the ledger. "" on either side = open on that side.
+  const [dateFrom, setDateFrom] = createSignal("");
+  const [dateTo, setDateTo] = createSignal("");
   // CA-117: bulk-reimburse selection, a Set of expense ids.
   const [selected, setSelected] = createSignal<Set<number>>(new Set());
   // Add-expense lives in a modal so the ledger keeps the page; opened from the primary action.
@@ -253,11 +257,14 @@ export default function Expenses() {
   const visible = createMemo(() => {
     const p = payerFilter();
     const s = supplierFilter();
+    const from = dateFrom();
+    const to = dateTo();
     let rows = expenses();
     if (p === "none") rows = rows.filter((e) => e.payerUserId == null);
     else if (p !== "all") rows = rows.filter((e) => e.payerUserId === Number(p));
     if (s === "none") rows = rows.filter((e) => e.supplierId == null);
     else if (s !== "all") rows = rows.filter((e) => e.supplierId === Number(s));
+    if (from || to) rows = rows.filter((e) => inDateRange(e.date, from, to));
     const dir = supplierSort();
     if (dir) {
       const sign = dir === "asc" ? 1 : -1;
@@ -538,6 +545,21 @@ export default function Expenses() {
 
       {/* EX-10 + CA-115: discriminate the ledger by payer and/or supplier. */}
       <div class="toolbar filter">
+        <span class="toolbar-label">{t("expenses.filterByDate")}</span>
+        <input
+          type="date"
+          aria-label={t("expenses.dateFrom")}
+          value={dateFrom()}
+          max={dateTo() || undefined}
+          onInput={(e) => setDateFrom(e.currentTarget.value)}
+        />
+        <input
+          type="date"
+          aria-label={t("expenses.dateTo")}
+          value={dateTo()}
+          min={dateFrom() || undefined}
+          onInput={(e) => setDateTo(e.currentTarget.value)}
+        />
         <span class="toolbar-label">{t("expenses.filterByPayer")}</span>
         <select value={payerFilter()} onChange={(e) => setPayerFilter(e.currentTarget.value)}>
           <option value="all">{t("expenses.allUsers")}</option>
