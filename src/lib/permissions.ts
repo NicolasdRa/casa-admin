@@ -12,6 +12,7 @@ export type Capability =
   | "deleteExpenses"
   | "reimburseExpenses"
   | "managePartnersCash"
+  | "settleCommission"
   | "maintenanceTasks"
   | "viewTotals"
   | "viewOwnCommission"
@@ -35,6 +36,7 @@ const MATRIX: Record<Capability, Role[]> = {
   deleteExpenses: ADMINS,
   reimburseExpenses: ADMINS, // EX-9: admin reimburses a co-host's out-of-pocket expense
   managePartnersCash: ADMINS,
+  settleCommission: SUPER, // record/edit/delete commission settlements — moves money vs a frozen accrual
   maintenanceTasks: ALL,
   viewTotals: ALL,
   viewOwnCommission: ALL,

@@ -109,6 +109,14 @@ test("co-host cannot delete or manage cash/config", () => {
   }
 });
 
+// settleCommission gates create/edit/delete of commission settlements AND the UI controls.
+// Only the superadmin may move money against the frozen accrual; admin and co-host are rejected.
+test("settleCommission is superadmin-only — admin and co-host are rejected", () => {
+  assert.equal(can("superadmin", "settleCommission"), true);
+  assert.equal(can("admin", "settleCommission"), false);
+  assert.equal(can("user", "settleCommission"), false);
+});
+
 // The on-the-ground manager (admin) works in pesos, so entry defaults to ARS;
 // the owner abroad (superadmin) and the co-host (user) default to EUR. EUR is
 // always derivable from the ARS via the immutable FX snapshot, so this only
