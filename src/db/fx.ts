@@ -1,4 +1,4 @@
-import { desc, lte } from "drizzle-orm";
+import { and, desc, gte, lte } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { CodedError } from "../lib/errors.ts";
 import { bnaAverage, type Currency, snapshot } from "../lib/fx.ts";
@@ -52,15 +52,18 @@ export function snapshotForDate(db: Db, date: string, currency: Currency, amount
   return { fxRate: rate.average, fxRateDate: rate.date, amountEur, amountArs };
 }
 
-/** FX-9: the most recent rates, oldest→newest, for the trend sparkline. */
-export function listRecentFxRates(db: Db, limit = 30) {
+/** Every stored BNA/manual quote, newest-first, optionally within an inclusive date range —
+ *  backs the full FX history table (the sparkline's drill-down). */
+export function listFxRates(db: Db, range: { from?: string; to?: string } = {}) {
+  const conds = [];
+  if (range.from) conds.push(gte(schema.fxRates.date, range.from));
+  if (range.to) conds.push(lte(schema.fxRates.date, range.to));
   return db
     .select()
     .from(schema.fxRates)
+    .where(conds.length ? and(...conds) : undefined)
     .orderBy(desc(schema.fxRates.date))
-    .limit(limit)
-    .all()
-    .reverse();
+    .all();
 }
 
 /** FX-7: build a snapshot from a user-supplied rate (e.g. weekend/holiday with no BNA quote).

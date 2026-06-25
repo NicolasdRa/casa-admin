@@ -25,3 +25,17 @@ export function formatMoney(cents: number, locale: string): string {
   });
   return fmt[locale].format(fromCents(cents));
 }
+
+/**
+ * FX rate (ARS per 1 EUR) -> display string. Rates are `real` ratios, not cents, so they format
+ * directly (no /100) but share money's grouped-thousands + 2-decimal locale rules — so every rate
+ * reads uniformly instead of raw `toString()` (1050 vs 1187.5 vs 1200.525). Full precision stays in
+ * storage; this rounds for display only. Callers append the ARS unit.
+ */
+export function formatRate(rate: number, locale: string): string {
+  fmt[locale] ??= new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return fmt[locale].format(rate);
+}

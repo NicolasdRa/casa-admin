@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { getFxRate, snapshotForDate, upsertFxRate } from "./fx.ts";
+import { getFxRate, listFxRates, snapshotForDate, upsertFxRate } from "./fx.ts";
 import * as schema from "./schema.ts";
 import { makeTestDb as testDb } from "./testdb.ts";
 
@@ -41,6 +41,31 @@ test("upsertFxRate rejects non-positive quotes", () => {
   const db = testDb();
   assert.throws(() => upsertFxRate(db, { date: "2026-06-18", compra: 0, venta: 1100 }));
   assert.throws(() => upsertFxRate(db, { date: "2026-06-18", compra: 1000, venta: -5 }));
+});
+
+test("listFxRates returns every record newest-first", () => {
+  const db = testDb();
+  upsertFxRate(db, { date: "2026-06-15", compra: 990, venta: 1010 });
+  upsertFxRate(db, { date: "2026-06-19", compra: 1180, venta: 1220 });
+  upsertFxRate(db, { date: "2026-06-17", compra: 1000, venta: 1100 });
+  const r = listFxRates(db);
+  assert.deepEqual(
+    r.map((x) => x.date),
+    ["2026-06-19", "2026-06-17", "2026-06-15"],
+  );
+});
+
+test("listFxRates filters by an inclusive date range", () => {
+  const db = testDb();
+  upsertFxRate(db, { date: "2026-05-31", compra: 900, venta: 1000 });
+  upsertFxRate(db, { date: "2026-06-01", compra: 990, venta: 1010 });
+  upsertFxRate(db, { date: "2026-06-30", compra: 1180, venta: 1220 });
+  upsertFxRate(db, { date: "2026-07-01", compra: 1200, venta: 1300 });
+  const r = listFxRates(db, { from: "2026-06-01", to: "2026-06-30" });
+  assert.deepEqual(
+    r.map((x) => x.date),
+    ["2026-06-30", "2026-06-01"], // boundaries included; May/Jul excluded
+  );
 });
 
 test("snapshotForDate builds the immutable FX snapshot for an amount", () => {
