@@ -53,7 +53,7 @@ const users = [
     role: "admin" as const,
     partner: "Anastasia",
   },
-  { name: "Co-host", email: "cohost@casabosque.local", role: "user" as const },
+  { name: "Fernando", email: "fernando@casabosque.local", role: "user" as const },
 ];
 if (listUsers(db).length === 0) {
   const passwordHash = hashPassword(TEMP_PASSWORD);
