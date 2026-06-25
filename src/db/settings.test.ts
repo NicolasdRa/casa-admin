@@ -74,3 +74,36 @@ test("parseSettings accepts each supported backup cadence", () => {
     assert.equal(r.patch.backupCadence, c);
   }
 });
+
+test("parseSettings accepts a valid iCal URL and clears it when blank", () => {
+  const ok = new FormData();
+  ok.set("airbnbIcalUrl", "https://www.airbnb.com/calendar/ical/123.ics?s=abc");
+  const r = parseSettings(ok);
+  assert.deepEqual(r, {
+    patch: { airbnbIcalUrl: "https://www.airbnb.com/calendar/ical/123.ics?s=abc" },
+  });
+
+  const blank = new FormData();
+  blank.set("airbnbIcalUrl", "  ");
+  assert.deepEqual(parseSettings(blank), { patch: { airbnbIcalUrl: null } });
+});
+
+test("parseSettings rejects a non-http iCal URL", () => {
+  const bad = new FormData();
+  bad.set("bookingIcalUrl", "ftp://nope");
+  assert.deepEqual(parseSettings(bad), { error: "icalUrlInvalid" });
+});
+
+test("parseSettings accepts a non-negative integer booking gap and rejects junk", () => {
+  const ok = new FormData();
+  ok.set("bookingGapDays", "2");
+  assert.deepEqual(parseSettings(ok), { patch: { bookingGapDays: 2 } });
+
+  const neg = new FormData();
+  neg.set("bookingGapDays", "-1");
+  assert.deepEqual(parseSettings(neg), { error: "gapInvalid" });
+
+  const frac = new FormData();
+  frac.set("bookingGapDays", "1.5");
+  assert.deepEqual(parseSettings(frac), { error: "gapInvalid" });
+});

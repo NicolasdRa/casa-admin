@@ -26,6 +26,7 @@ CREATE TABLE bookings (
   amount_ars integer NOT NULL,
   commission_rate real NOT NULL,
   commission_eur integer NOT NULL,
+  co_host_user_id integer,
   type text DEFAULT 'booking' NOT NULL,
   channel text DEFAULT 'direct' NOT NULL,
   created_at text DEFAULT CURRENT_TIMESTAMP NOT NULL
@@ -35,7 +36,18 @@ CREATE TABLE settings (
   commission_rate real DEFAULT 0.1 NOT NULL,
   fx_source text DEFAULT 'BNA' NOT NULL,
   default_locale text DEFAULT 'es' NOT NULL,
-  backup_cadence text DEFAULT 'daily' NOT NULL
+  backup_cadence text DEFAULT 'daily' NOT NULL,
+  airbnb_ical_url text,
+  booking_ical_url text,
+  booking_gap_days integer DEFAULT 0 NOT NULL
+);
+CREATE TABLE external_reservations (
+  uid text PRIMARY KEY NOT NULL,
+  channel text NOT NULL,
+  start text NOT NULL,
+  end text NOT NULL,
+  summary text,
+  fetched_at text DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 CREATE TABLE users (
   id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -86,11 +98,12 @@ CREATE TABLE cash_entries (
   partner_id integer NOT NULL,
   concept text NOT NULL,
   amount_eur integer NOT NULL,
-  type text NOT NULL
+  type text NOT NULL,
+  booking_id integer
 );
 CREATE TABLE maintenance_tasks (
   id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-  date text NOT NULL,
+  date text,
   description text NOT NULL,
   status text DEFAULT 'pending' NOT NULL,
   season text NOT NULL,
@@ -99,6 +112,7 @@ CREATE TABLE maintenance_tasks (
 CREATE TABLE commission_settlements (
   id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
   date text NOT NULL,
+  co_host_user_id integer,
   amount_eur integer NOT NULL,
   note text
 );

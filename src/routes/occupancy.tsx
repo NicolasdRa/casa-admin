@@ -1,26 +1,29 @@
-import { createAsync, query } from "@solidjs/router";
+import { createAsync, query, useSearchParams } from "@solidjs/router";
 import { For } from "solid-js";
 import { AppShell } from "~/components/AppShell";
-import { listBookings, occupancyByMonth } from "~/db/bookings";
+import { listBookings, mergeOccupancy, occupancyByMonth, occupancyPct } from "~/db/bookings";
+import { listReservations } from "~/db/externalReservations";
 import { db } from "~/db/index";
 import { useI18n } from "~/lib/i18n";
 import { requireUser } from "~/lib/session";
 
-const occupancyQuery = query(async () => {
+const occupancyQuery = query(async (range: { from?: string; to?: string }) => {
   "use server";
   await requireUser();
-  return occupancyByMonth(listBookings(db));
+  // Direct bookings grouped by month, with imported OTA blocks (CA-84) folded in beside them.
+  return mergeOccupancy(occupancyByMonth(listBookings(db, range)), listReservations(db, range));
 }, "occupancy");
-
-// % of the month's nights that were booked. daysInMonth via day-0 of the next month.
-function occupancyPct(month: string, nights: number) {
-  const [y, m] = month.split("-").map(Number);
-  return Math.round((nights / new Date(y, m, 0).getDate()) * 100);
-}
 
 export default function Occupancy() {
   const { t } = useI18n();
-  const months = createAsync(() => occupancyQuery(), { initialValue: [] });
+  const [params] = useSearchParams();
+  const p = (k: "from" | "to") => {
+    const v = params[k];
+    return typeof v === "string" && v ? v : undefined;
+  };
+  const months = createAsync(() => occupancyQuery({ from: p("from"), to: p("to") }), {
+    initialValue: [],
+  });
 
   return (
     <AppShell>
@@ -29,6 +32,17 @@ export default function Occupancy() {
           <h1>{t("occupancy.title")}</h1>
         </div>
       </header>
+
+      {/* Date-range filter — plain GET form, URL-driven (works without JS). Filters by check-in. */}
+      <form method="get" class="toolbar filter">
+        <span class="toolbar-label">{t("bookings.filter")}</span>
+        <input type="date" name="from" value={p("from") ?? ""} title={t("bookings.from")} />
+        <input type="date" name="to" value={p("to") ?? ""} title={t("bookings.to")} />
+        <button type="submit" class="btn-ghost">
+          {t("bookings.filter")}
+        </button>
+      </form>
+
       <For each={months()} fallback={<p class="note">{t("bookings.empty")}</p>}>
         {(m) => (
           <section class="panel">
@@ -50,6 +64,30 @@ export default function Occupancy() {
                       <td style={{ width: "8rem" }}>
                         <span class={`chan chan-${b.channel}`}>
                           {t(`bookings.channel_${b.channel}` as Parameters<typeof t>[0]) as string}
+                        </span>
+                      </td>
+                    </tr>
+                  )}
+                </For>
+                {/* CA-84: imported OTA blocks — availability only, muted to read as "synced, not a
+                    money booking". They carry dates + a feed label, never an amount. */}
+                <For each={m.blocks}>
+                  {(blk) => (
+                    <tr style={{ color: "var(--muted)" }}>
+                      <td style={{ width: "11rem" }}>{`${blk.start} → ${blk.end}`}</td>
+                      <td>
+                        <span class="note">
+                          {t("occupancy.synced")}
+                          {blk.summary ? ` · ${blk.summary}` : ""}
+                        </span>
+                      </td>
+                      <td style={{ width: "8rem" }}>
+                        <span class={`chan chan-${blk.channel}`}>
+                          {
+                            t(
+                              `bookings.channel_${blk.channel}` as Parameters<typeof t>[0],
+                            ) as string
+                          }
                         </span>
                       </td>
                     </tr>

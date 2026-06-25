@@ -10,6 +10,7 @@
     "db:seed": "node src/db/seed.ts",
     "db:import": "node src/db/import.ts",
     "fx:fetch": "node src/db/fetchFx.ts",
+    "ical:fetch": "node src/db/fetchIcal.ts",
     "db:studio": "drizzle-kit studio",
     "test": "node --test",
     "typecheck": "tsc --noEmit",

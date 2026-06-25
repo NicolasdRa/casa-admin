@@ -22,6 +22,13 @@ export const settings = sqliteTable("settings", {
   fxSource: text("fx_source").notNull().default("BNA"),
   defaultLocale: text("default_locale").notNull().default("es"),
   backupCadence: text("backup_cadence").notNull().default("daily"),
+  // CA-84: per-listing iCal export URLs. The OTAs publish reserved dates here; `ical:fetch` polls
+  // them. Null/blank = that channel isn't synced. Money is never carried — dates only.
+  airbnbIcalUrl: text("airbnb_ical_url"),
+  bookingIcalUrl: text("booking_ical_url"),
+  // CA-86: clear days required between stays for the double-booking guard. 0 = back-to-back allowed
+  // (same-day turnover is fine: checkout ~noon, checkin ~3pm). >0 reserves N buffer/cleaning days.
+  bookingGapDays: integer("booking_gap_days").notNull().default(0),
 });
 
 export const users = sqliteTable("users", {
@@ -86,7 +93,12 @@ export const bookings = sqliteTable("bookings", {
   amountArs: integer("amount_ars").notNull(), // cents
   commissionRate: real("commission_rate").notNull(), // snapshotted from settings
   commissionEur: integer("commission_eur").notNull(), // cents, accrues to co-host
-  type: text("type", { enum: ["booking", "cancellation", "reimbursement"] })
+  // The co-host (role "user") whose commission this booking accrues to. Nullable: legacy rows
+  // predate the relation (backfilled to the sole co-host) and the field is optional on entry.
+  coHostUserId: integer("co_host_user_id").references(() => users.id),
+  // "damage" = a guest paying for damage they caused (real money in). NOT "reimbursement" — that
+  // word is reserved for the co-host expense-reimbursement flow (expenses.reimbursed_*).
+  type: text("type", { enum: ["booking", "cancellation", "damage"] })
     .notNull()
     .default("booking"),
   // BK: source channel. "direct" = entered by hand / owned site; OTAs are tracked so income and
@@ -128,26 +140,44 @@ export const cashEntries = sqliteTable("cash_entries", {
     .notNull()
     .references(() => partners.id),
   concept: text("concept").notNull(),
-  amountEur: integer("amount_eur").notNull(), // signed cents; +contribution/allocation, -withdrawal
-  type: text("type", { enum: ["contribution", "withdrawal", "allocation"] }).notNull(),
+  amountEur: integer("amount_eur").notNull(), // signed cents; +contribution/allocation/income, -withdrawal
+  type: text("type", { enum: ["contribution", "withdrawal", "allocation", "income"] }).notNull(),
+  // Set only on "income" entries: the booking whose rent this cash receipt records. Bookings stay the
+  // single source of truth for the income column — this link just dedupes the receipt so a booking
+  // can't be marked paid twice (one row per booking; partnerId is who pocketed it).
+  bookingId: integer("booking_id").references(() => bookings.id),
 });
 
 export const commissionSettlements = sqliteTable("commission_settlements", {
   id: id(),
   date: text("date").notNull(),
+  // The co-host (role "user") this payment settles. Nullable: legacy rows predate the relation.
+  coHostUserId: integer("co_host_user_id").references(() => users.id),
   amountEur: integer("amount_eur").notNull(), // cents settled to co-host
   note: text("note"),
 });
 
 export const maintenanceTasks = sqliteTable("maintenance_tasks", {
   id: id(),
-  date: text("date").notNull(),
+  date: text("date"), // nullable: a dateless task is an unscheduled pending, sorted on top (CA-127)
   description: text("description").notNull(),
   status: text("status", { enum: ["pending", "done"] })
     .notNull()
     .default("pending"),
   season: text("season").notNull(), // e.g. "2026"
   expenseId: integer("expense_id").references(() => expenses.id),
+});
+
+// CA-84: reserved/blocked date ranges imported from OTA iCal feeds. Keyed on the VEVENT UID so a
+// re-fetch updates in place instead of duplicating (idempotent poll). Carries dates only — never
+// money or guest PII (the feeds don't expose them). Consumed by the double-booking guard (CA-86).
+export const externalReservations = sqliteTable("external_reservations", {
+  uid: text("uid").primaryKey(), // VEVENT UID from the feed
+  channel: text("channel", { enum: ["booking", "airbnb"] }).notNull(),
+  start: text("start").notNull(), // ISO check-in / block start
+  end: text("end").notNull(), // ISO check-out (exclusive — see lib/overlap.ts)
+  summary: text("summary"), // raw VEVENT SUMMARY, e.g. "Reserved" / "Not available"
+  fetchedAt: text("fetched_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const auditLog = sqliteTable("audit_log", {

@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import { CodedError } from "../lib/errors.ts";
 import * as schema from "./schema.ts";
 
 type Db = BetterSQLite3Database<typeof schema>;
@@ -14,7 +15,26 @@ export type SettingsPatch = Partial<{
   fxSource: string;
   defaultLocale: "es" | "en";
   backupCadence: string;
+  airbnbIcalUrl: string | null;
+  bookingIcalUrl: string | null;
+  bookingGapDays: number;
 }>;
+
+/** Trim an iCal URL field. Blank clears it (null); a non-blank value must be a valid http(s) URL,
+ *  else throw so the form reports it rather than silently storing a feed that will never fetch. */
+function parseIcalUrl(raw: FormDataEntryValue | null): string | null {
+  const v = String(raw ?? "").trim();
+  if (!v) return null;
+  let u: URL;
+  try {
+    u = new URL(v);
+  } catch {
+    throw new CodedError("icalUrlInvalid", `invalid iCal URL: ${v}`);
+  }
+  if (u.protocol !== "http:" && u.protocol !== "https:")
+    throw new CodedError("icalUrlInvalid", `iCal URL must be http(s): ${v}`);
+  return v;
+}
 
 /** App-wide settings as a single row, lazily created with schema defaults on first read. */
 export function getSettings(db: Db) {
@@ -31,6 +51,19 @@ export function getSettings(db: Db) {
  */
 export function parseSettings(form: FormData): { patch: SettingsPatch } | { error: string } {
   const patch: SettingsPatch = {};
+  try {
+    // Only patch when the field is present, so a form that omits it can't clobber a stored URL.
+    if (form.has("airbnbIcalUrl")) patch.airbnbIcalUrl = parseIcalUrl(form.get("airbnbIcalUrl"));
+    if (form.has("bookingIcalUrl")) patch.bookingIcalUrl = parseIcalUrl(form.get("bookingIcalUrl"));
+  } catch (e) {
+    return { error: e instanceof CodedError ? e.code : "icalUrlInvalid" };
+  }
+  const gapRaw = form.get("bookingGapDays");
+  if (gapRaw != null && String(gapRaw).trim() !== "") {
+    const gap = Number(gapRaw);
+    if (!Number.isInteger(gap) || gap < 0) return { error: "gapInvalid" };
+    patch.bookingGapDays = gap;
+  }
   const pctRaw = form.get("commissionPct");
   if (pctRaw != null && String(pctRaw).trim() !== "") {
     const pct = Number(pctRaw);

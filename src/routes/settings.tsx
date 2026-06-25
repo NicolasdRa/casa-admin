@@ -1,4 +1,4 @@
-import { action, createAsync, query, redirect, useSubmission } from "@solidjs/router";
+import { A, action, createAsync, query, redirect, useSubmission } from "@solidjs/router";
 import { For, Show } from "solid-js";
 import { AppShell } from "~/components/AppShell";
 import { db } from "~/db/index";
@@ -72,6 +72,9 @@ export default function Settings() {
                   )}
                 </For>
               </select>
+              <A href="/fx" class="note">
+                {t("fx.viewHistory")} ›
+              </A>
             </label>
             <label class="field">
               <span>{t("settings.locale")}</span>
@@ -83,6 +86,45 @@ export default function Settings() {
                   EN
                 </option>
               </select>
+            </label>
+            <div class="field" style={{ display: "block" }}>
+              <strong>{t("settings.icalSync")}</strong>
+              <p class="note" style={{ margin: "4px 0 0" }}>
+                {t("settings.icalHint")}
+              </p>
+            </div>
+            <label class="field">
+              <span>{t("settings.airbnbIcal")}</span>
+              <input
+                type="url"
+                name="airbnbIcalUrl"
+                inputmode="url"
+                placeholder="https://www.airbnb.com/calendar/ical/…"
+                value={cfg().airbnbIcalUrl ?? ""}
+                style={{ "max-width": "28rem" }}
+              />
+            </label>
+            <label class="field">
+              <span>{t("settings.bookingIcal")}</span>
+              <input
+                type="url"
+                name="bookingIcalUrl"
+                inputmode="url"
+                placeholder="https://ical.booking.com/…"
+                value={cfg().bookingIcalUrl ?? ""}
+                style={{ "max-width": "28rem" }}
+              />
+            </label>
+            <label class="field">
+              <span>{t("settings.bookingGap")}</span>
+              <input
+                type="number"
+                name="bookingGapDays"
+                min="0"
+                step="1"
+                value={cfg().bookingGapDays.toString()}
+              />
+              <span class="note">{t("settings.bookingGapHint")}</span>
             </label>
             <label class="field">
               <span>{t("settings.backup")}</span>
@@ -113,7 +155,11 @@ export default function Settings() {
             </div>
             <Show when={saving.result?.error}>
               <p class="alert alert-error" role="alert" style={{ "margin-top": "12px" }}>
-                {t("settings.commissionInvalid")}
+                {saving.result?.error === "icalUrlInvalid"
+                  ? t("settings.icalUrlInvalid")
+                  : saving.result?.error === "gapInvalid"
+                    ? t("settings.gapInvalid")
+                    : t("settings.commissionInvalid")}
               </p>
             </Show>
           </form>
