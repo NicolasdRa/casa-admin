@@ -92,6 +92,8 @@ export default function Caja() {
   const removing = useSubmission(removeCashEntry);
   const money = (c: number) => formatMoney(c, locale());
   const sign = (c: number) => (c < 0 ? "num neg" : c > 0 ? "num pos" : "num");
+  // accounting view: a cost is shown as a negative so a row reconciles by plain addition (avoid -0)
+  const cost = (c: number) => money(c ? -c : 0);
   const partnerName = createMemo(() => new Map(partners().map((p) => [p.id, p.name])));
   // running balance is computed chronologically, displayed newest-first
   const ledgerDesc = createMemo(() => ledger().slice().reverse());
@@ -103,8 +105,10 @@ export default function Caja() {
       incomeShare: sum((s) => s.incomeShare),
       commissionShare: sum((s) => s.commissionShare),
       expenseShare: sum((s) => s.expenseShare),
+      result: sum((s) => s.incomeShare - s.commissionShare - s.expenseShare),
       fronted: sum((s) => s.fronted),
       cashAccount: sum((s) => s.cashAccount),
+      cash: sum((s) => s.fronted + s.cashAccount),
       settle: sum((s) => s.settle),
     };
   });
@@ -173,17 +177,47 @@ export default function Caja() {
             {t("caja.statements")} <span class="unit">(€)</span>
           </h2>
         </div>
+        {/* Pot summary: business result → net cash → saldo, mirroring the spreadsheet's
+            balance → caja → saldo flow. Reconciles to the table's settle total below. */}
+        <Show when={statements().length > 0}>
+          <dl class="summary-totals pot-strip">
+            <div>
+              <dt>{t("caja.potResult")}</dt>
+              <dd class="num">{money(totals().result)}</dd>
+            </div>
+            <div>
+              <dt>{t("caja.potCash")}</dt>
+              <dd class={sign(totals().cash)}>{money(totals().cash)}</dd>
+            </div>
+            <div>
+              <dt>{t("caja.potSaldo")}</dt>
+              <dd class={sign(totals().settle)}>{money(totals().settle)}</dd>
+            </div>
+          </dl>
+        </Show>
         <div class="table-scroll">
           <table class="cards">
             <thead>
+              <tr class="group-row">
+                <th rowspan="2">{t("caja.partner")}</th>
+                <th class="num grp-start" colspan="4">
+                  {t("caja.resultGroup")}
+                </th>
+                <th class="num grp-start" colspan="3">
+                  {t("caja.cashGroup")}
+                </th>
+                <th class="num grp-start" rowspan="2">
+                  {t("caja.settle")}
+                </th>
+              </tr>
               <tr>
-                <th>{t("caja.partner")}</th>
-                <th class="num">{t("caja.income")}</th>
+                <th class="num grp-start">{t("caja.income")}</th>
                 <th class="num">{t("caja.commission")}</th>
                 <th class="num">{t("caja.expenseShare")}</th>
-                <th class="num">{t("caja.fronted")}</th>
+                <th class="num sub">{t("caja.resultSub")}</th>
+                <th class="num grp-start">{t("caja.fronted")}</th>
                 <th class="num">{t("caja.cashAccount")}</th>
-                <th class="num">{t("caja.settle")}</th>
+                <th class="num sub">{t("caja.cashSub")}</th>
               </tr>
             </thead>
             <tbody>
@@ -191,55 +225,71 @@ export default function Caja() {
                 each={statements()}
                 fallback={
                   <tr>
-                    <td colspan="7" class="note">
+                    <td colspan="9" class="note">
                       {t("caja.noStatements")}
                     </td>
                   </tr>
                 }
               >
-                {(s) => (
-                  <tr>
-                    <td>{s.name}</td>
-                    <td class="num" data-label={t("caja.income")}>
-                      {money(s.incomeShare)}
-                    </td>
-                    <td class="num" data-label={t("caja.commission")}>
-                      {money(s.commissionShare)}
-                    </td>
-                    <td class="num" data-label={t("caja.expenseShare")}>
-                      {money(s.expenseShare)}
-                    </td>
-                    <td class="num" data-label={t("caja.fronted")}>
-                      {money(s.fronted)}
-                    </td>
-                    <td class={sign(s.cashAccount)} data-label={t("caja.cashAccount")}>
-                      {money(s.cashAccount)}
-                    </td>
-                    <td class={sign(s.settle)} data-label={t("caja.settle")}>
-                      {money(s.settle)}
-                    </td>
-                  </tr>
-                )}
+                {(s) => {
+                  const result = s.incomeShare - s.commissionShare - s.expenseShare;
+                  const cash = s.fronted + s.cashAccount;
+                  return (
+                    <tr>
+                      <td>{s.name}</td>
+                      <td class="num grp-start" data-label={t("caja.income")}>
+                        {money(s.incomeShare)}
+                      </td>
+                      <td class={sign(-s.commissionShare)} data-label={t("caja.commission")}>
+                        {cost(s.commissionShare)}
+                      </td>
+                      <td class={sign(-s.expenseShare)} data-label={t("caja.expenseShare")}>
+                        {cost(s.expenseShare)}
+                      </td>
+                      <td class={`${sign(result)} sub`} data-label={t("caja.resultSub")}>
+                        {money(result)}
+                      </td>
+                      <td class="num grp-start" data-label={t("caja.fronted")}>
+                        {money(s.fronted)}
+                      </td>
+                      <td class={sign(s.cashAccount)} data-label={t("caja.cashAccount")}>
+                        {money(s.cashAccount)}
+                      </td>
+                      <td class={`${sign(cash)} sub`} data-label={t("caja.cashSub")}>
+                        {money(cash)}
+                      </td>
+                      <td class={`${sign(s.settle)} grp-start`} data-label={t("caja.settle")}>
+                        {money(s.settle)}
+                      </td>
+                    </tr>
+                  );
+                }}
               </For>
               <Show when={statements().length > 0}>
                 <tr class="total">
                   <td>{t("caja.total")}</td>
-                  <td class="num" data-label={t("caja.income")}>
+                  <td class="num grp-start" data-label={t("caja.income")}>
                     {money(totals().incomeShare)}
                   </td>
-                  <td class="num" data-label={t("caja.commission")}>
-                    {money(totals().commissionShare)}
+                  <td class={sign(-totals().commissionShare)} data-label={t("caja.commission")}>
+                    {cost(totals().commissionShare)}
                   </td>
-                  <td class="num" data-label={t("caja.expenseShare")}>
-                    {money(totals().expenseShare)}
+                  <td class={sign(-totals().expenseShare)} data-label={t("caja.expenseShare")}>
+                    {cost(totals().expenseShare)}
                   </td>
-                  <td class="num" data-label={t("caja.fronted")}>
+                  <td class={`${sign(totals().result)} sub`} data-label={t("caja.resultSub")}>
+                    {money(totals().result)}
+                  </td>
+                  <td class="num grp-start" data-label={t("caja.fronted")}>
                     {money(totals().fronted)}
                   </td>
                   <td class={sign(totals().cashAccount)} data-label={t("caja.cashAccount")}>
                     {money(totals().cashAccount)}
                   </td>
-                  <td class={sign(totals().settle)} data-label={t("caja.settle")}>
+                  <td class={`${sign(totals().cash)} sub`} data-label={t("caja.cashSub")}>
+                    {money(totals().cash)}
+                  </td>
+                  <td class={`${sign(totals().settle)} grp-start`} data-label={t("caja.settle")}>
                     {money(totals().settle)}
                   </td>
                 </tr>
