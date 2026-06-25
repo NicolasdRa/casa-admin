@@ -3,6 +3,7 @@ import { For, type JSX, Show } from "solid-js";
 import { useI18n } from "~/lib/i18n";
 import { can } from "~/lib/permissions";
 import { clearSession, currentUser } from "~/lib/session";
+import { theme, toggleTheme } from "~/lib/theme";
 
 const currentUserQuery = query(async () => {
   "use server";
@@ -55,6 +56,31 @@ function Icon(props: { name: "home" | "cal" | "receipt" | "chart" | "more" }) {
   );
 }
 
+// Sun when dark (tap → light), moon when light (tap → dark). Reactive on the theme signal.
+function ThemeGlyph() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.75"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <Show
+        when={theme() === "dark"}
+        fallback={<path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z" />}
+      >
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+      </Show>
+    </svg>
+  );
+}
+
 /**
  * App chrome. Desktop (≥880px): navy sidebar with full nav + identity.
  * Mobile (<880px): a name-only top bar, a fixed 5-item icon tab bar, and a
@@ -71,10 +97,12 @@ export function AppShell(props: { children: JSX.Element }) {
     const items: { href: string; label: string; end?: boolean }[] = [
       { href: "/", label: t("nav.dashboard"), end: true },
       { href: "/bookings", label: t("nav.bookings") },
+      { href: "/occupancy", label: t("occupancy.title") },
       { href: "/expenses", label: t("nav.expenses") },
       { href: "/suppliers", label: t("suppliers.manage") },
       { href: "/maintenance", label: t("nav.tasks") },
       { href: "/reports", label: t("nav.reports") },
+      { href: "/commissions", label: t("nav.commissions") },
     ];
     if (me && can(me.role, "managePartnersCash"))
       items.push({ href: "/caja", label: t("caja.manage") });
@@ -82,6 +110,7 @@ export function AppShell(props: { children: JSX.Element }) {
     if (me && can(me.role, "manageSettings"))
       items.push({ href: "/settings", label: t("settings.manage") });
     if (me && me.role !== "user") items.push({ href: "/audit", label: t("audit.title") });
+    items.push({ href: "/help", label: t("nav.help") });
     return items;
   };
 
@@ -116,6 +145,15 @@ export function AppShell(props: { children: JSX.Element }) {
             )}
           </Show>
           <div class="app-foot-actions">
+            <button
+              type="button"
+              class="btn-ghost"
+              onClick={toggleTheme}
+              aria-label={t("app.theme")}
+              title={t("app.theme")}
+            >
+              <ThemeGlyph />
+            </button>
             <button
               type="button"
               class="btn-ghost"
@@ -198,6 +236,15 @@ export function AppShell(props: { children: JSX.Element }) {
             </For>
           </nav>
           <div class="sheet-account">
+            <button
+              type="button"
+              class="btn-ghost"
+              onClick={toggleTheme}
+              aria-label={t("app.theme")}
+              title={t("app.theme")}
+            >
+              <ThemeGlyph />
+            </button>
             <button
               type="button"
               class="btn-ghost"

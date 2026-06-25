@@ -15,6 +15,10 @@ export default createHandler(() => (
             rel="stylesheet"
             href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
           />
+          {/* Set the theme before first paint (no flash). localStorage wins, else OS preference. */}
+          <script>
+            {`try{var t=localStorage.theme||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.dataset.theme=t}catch(e){}`}
+          </script>
           {assets}
         </head>
         <body>

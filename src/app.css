@@ -27,6 +27,11 @@
   --navy-hover: #0f172a;
   --navy-soft: #334155;
   --on-navy: #ffffff;
+  /* Nav chrome surface — equals --navy in light, but split out so dark mode can keep the
+     sidebar a dark brand panel while --navy itself becomes the (lighter) interactive accent. */
+  --nav-bg: var(--navy);
+
+  color-scheme: light;
 
   /* Semantic financial signals */
   --pos: #047857; /* emerald, darkened for text contrast */
@@ -36,6 +41,17 @@
   --warn: #b45309; /* amber pending */
   --warn-bg: #fffbeb;
   --danger: #ba1a1a;
+
+  /* Categorical chart palette (CA-119 pies) — drawn from the app's own brand + financial tokens
+     (navy, amber, teal, rose, emerald, slate) so it reads as one identity, not a rainbow. Ordered
+     so size-sorted, hence pie-adjacent, slices land on contrasting hues. --ch-other is muted noise. */
+  --ch-1: #1e293b; /* navy (brand) */
+  --ch-2: #b45309; /* amber */
+  --ch-3: #0e7490; /* teal */
+  --ch-4: #be123c; /* rose */
+  --ch-5: #047857; /* emerald */
+  --ch-6: #334155; /* slate (navy-soft) */
+  --ch-other: #94a3b8;
 
   /* Geometry — sharp, mathematical */
   --radius: 2px;
@@ -50,6 +66,54 @@
   --z-tooltip: 300;
 
   --font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* ─── Dark theme ─────────────────────────────────────────────────
+ * Same Precision-Ledger identity after dark: warm slate surfaces (not pure black,
+ * to cut glare over long entry sessions), near-white ink (not #fff, same reason),
+ * and brighter signal hues so emerald/rose/amber still clear contrast on dark.
+ * Only token VALUES change here — every component re-skins automatically. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #0e1217;
+  --surface: #161b22;
+  --surface-inset: #1c222b;
+  --surface-hover: #1c222b;
+  --zebra: #12161c;
+
+  --ink: #e6e9ee;
+  --muted: #a4abb6; /* ≥4.5:1 on --surface */
+  --faint: #7d8693;
+
+  --line: #262c36;
+  --line-strong: #39414e;
+
+  /* --navy becomes the interactive accent (links, buttons, focus); the sidebar keeps a
+     dark brand surface via --nav-bg below, so the accent is free to lighten for contrast. */
+  --navy: #5b86f5;
+  --navy-hover: #7ba0ff;
+  --navy-soft: #94a3b8;
+  --nav-bg: #1a2332;
+
+  --pos: #34d399;
+  --pos-bg: #07271d;
+  --neg: #fb7185;
+  --neg-bg: #350f17;
+  --warn: #fbbf24;
+  --warn-bg: #34270a;
+  --danger: #ff6b6b;
+
+  /* Chart hues lifted for a dark canvas (kept in brand families). */
+  --ch-1: #6b8cff;
+  --ch-2: #fbbf24;
+  --ch-3: #22d3ee;
+  --ch-4: #fb7185;
+  --ch-5: #34d399;
+  --ch-6: #94a3b8;
+  --ch-other: #64748b;
+
+  --pop-shadow: 0 2px 8px rgb(0 0 0 / 0.5);
 }
 
 * {
@@ -131,6 +195,8 @@ button,
 textarea {
   font-family: inherit;
   font-size: 0.875rem;
+  line-height: 1.2;
+  min-height: 33px;
   color: var(--ink);
   border-radius: var(--radius);
 }
@@ -157,13 +223,19 @@ textarea:focus {
 }
 select {
   cursor: pointer;
+  /* Native arrow can't have its spacing tuned, so draw our own chevron with room to breathe. */
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  padding-right: 28px;
+}
+textarea {
+  line-height: 1.5; /* single-line controls share 1.2; multi-line text needs the room */
 }
 input[type="file"] {
   padding: 5px 8px;
   font-size: 0.8125rem;
-}
-input[type="date"] {
-  min-height: 33px;
 }
 
 /* Primary action = solid navy. The dominant button in the app. */
@@ -173,12 +245,15 @@ button,
   align-items: center;
   justify-content: center;
   gap: 6px;
+  line-height: 1.2;
+  min-height: 33px;
   padding: 7px 14px;
   font-weight: 500;
   color: var(--on-navy);
   background: var(--navy);
   border: 1px solid var(--navy);
   cursor: pointer;
+  text-decoration: none; /* button-styled <A> must not underline */
   transition:
     background 120ms ease,
     border-color 120ms ease,
@@ -188,6 +263,7 @@ button:hover,
 .btn:hover {
   background: var(--navy-hover);
   border-color: var(--navy-hover);
+  text-decoration: none; /* (0,1,1) — beats the global a:hover underline */
 }
 button:active,
 .btn:active {
@@ -313,6 +389,106 @@ tr.total {
 tr.total td {
   border-top: 1px solid var(--line-strong);
 }
+/* Grouped statement header (caja): tier-1 group labels + vertical dividers between groups. */
+.group-row th {
+  text-align: center;
+  font-weight: 600;
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+}
+.grp-start {
+  border-left: 1px solid var(--line);
+}
+/* Subtotal column: the running result of its group, emphasised over the detail cells. */
+td.sub,
+th.sub {
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--surface-inset);
+}
+
+/* ─── Tabs — underline-style, switch a section in place ───────── */
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 16px;
+}
+.tab-btn {
+  appearance: none;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  padding: 10px 14px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+}
+.tab-btn:hover {
+  color: var(--ink);
+}
+.tab-btn.is-active {
+  color: var(--ink);
+  border-bottom-color: var(--navy);
+}
+
+/* ─── Help / Docs route ──────────────────────────────────────── */
+
+.docs-toc ul {
+  list-style: none;
+  margin: 0;
+  padding: 14px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+.docs-toc a {
+  font-size: 0.875rem;
+  color: var(--navy);
+  text-decoration: none;
+}
+.docs-toc a:hover {
+  text-decoration: underline;
+}
+/* Readable measure for long-form prose; sections scroll into view under any sticky chrome. */
+.docs section {
+  scroll-margin-top: 16px;
+}
+.docs h2 {
+  font-size: 1.0625rem;
+  margin: 0 0 12px;
+}
+.docs h3 {
+  font-size: 0.9375rem;
+  margin: 18px 0 6px;
+  color: var(--ink);
+}
+.docs p,
+.docs li {
+  max-width: 70ch;
+  line-height: 1.6;
+  color: var(--ink-soft, var(--ink));
+}
+.docs p {
+  margin: 0 0 10px;
+}
+.docs ul {
+  margin: 0 0 10px;
+  padding-left: 20px;
+}
+.docs li {
+  margin: 0 0 4px;
+}
+/* Callout: a quiet inset band for load-bearing rules (money, FX, settlement). */
+.doc-note {
+  border-left: 3px solid var(--navy);
+  background: var(--surface-inset);
+  padding: 10px 14px;
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
 
 /* ─── Panels — outline-defined containers, no shadow ─────────── */
 
@@ -327,6 +503,15 @@ tr.total td {
 * + .panel {
   margin-top: 20px;
 }
+/* Tighter rhythm in the page-header cluster — title, stat strip and filter controls read
+   as one group instead of three blocks 20px apart. Placed after the defaults to override. */
+.page-head + .panel,
+.page-head + .toolbar,
+.stats + .toolbar,
+.stats + .tabs,
+.toolbar.filter + .tabs {
+  margin-top: 12px;
+}
 .panel-head {
   padding: 12px 16px;
   border-bottom: 1px solid var(--line);
@@ -337,6 +522,115 @@ tr.total td {
 }
 .panel-pad {
   padding: 16px;
+}
+
+/* ─── Expenses summary (CA-119) — headline totals + conic-gradient pies ───── */
+
+.summary-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  padding: 16px;
+}
+.summary-totals .num {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+.summary-totals dt {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.summary-totals dd {
+  margin: 0;
+}
+/* Caja pot summary: a quiet inset band; last figure (saldo) leads, sign-coloured. */
+.pot-strip {
+  background: var(--surface-inset);
+  border-bottom: 1px solid var(--line);
+}
+.pot-strip dd.neg {
+  color: var(--neg);
+}
+.pot-strip dd.pos {
+  color: var(--pos);
+}
+.pot-strip > div:last-child {
+  margin-left: auto;
+}
+
+.summary-graphs > summary {
+  cursor: pointer;
+  padding: 0 16px 14px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--navy);
+  width: fit-content;
+}
+.summary-graphs > summary:hover {
+  color: var(--navy-hover);
+}
+.summary-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  padding: 0 16px 16px;
+}
+.pie-card {
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px;
+}
+.pie-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.pie-row {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.pie {
+  flex: 0 0 auto;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+}
+.pie-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.pie-legend li {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  gap: 6px;
+  align-items: center;
+  font-size: 0.8125rem;
+}
+.pie-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+.pie-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pie-val {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 /* ─── Toolbar — the add / filter form rows ───────────────────── */
@@ -485,6 +779,9 @@ tr.total td {
     margin: var(--u) 0 0;
     top: anchor(bottom);
     right: anchor(right);
+    /* Near the bottom of the viewport, flip above the trigger instead of clipping below.
+       flip-block also flips the top margin to the bottom, keeping the gap. */
+    position-try-fallbacks: flip-block;
   }
 }
 .menu-pop form {
@@ -655,7 +952,7 @@ tr.total td {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--navy);
+  background: var(--nav-bg);
   color: var(--on-navy);
   z-index: var(--z-sticky);
 }
@@ -781,7 +1078,7 @@ tr.total td {
   align-items: center;
   padding: 0 16px;
   height: 52px;
-  background: var(--navy);
+  background: var(--nav-bg);
   color: var(--on-navy);
 }
 .app-topbar strong {
@@ -796,7 +1093,7 @@ tr.total td {
   z-index: var(--z-sticky);
   height: calc(58px + env(safe-area-inset-bottom));
   padding-bottom: env(safe-area-inset-bottom);
-  background: var(--navy);
+  background: var(--nav-bg);
   border-top: 1px solid rgb(255 255 255 / 0.1);
 }
 .app-tabbar .tab {
@@ -1138,26 +1435,130 @@ tr.total td {
   vertical-align: baseline;
 }
 
-/* Dashboard quick links */
-.dash-links {
+/* ─── Panel zones (CA-119 overview) ───────────────────────────── */
+
+/* Scorecard delta — direction by arrow + sign, muted (never colour alone). */
+.stat .delta {
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.period-select {
+  font-size: 0.8125rem;
+}
+
+/* Two-column body: recent activity (wide) + needs attention. */
+.panel-grid {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 20px;
+  align-items: start;
+}
+.panel-grid > .panel {
+  margin-top: 0;
+}
+/* Right column: needs attention + FX trend stacked, even 20px gap (not the .panel+.panel margin). */
+.panel-col {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-direction: column;
+  gap: 20px;
 }
-.dash-links a {
-  padding: 9px 16px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  background: var(--surface);
-  font-weight: 500;
-  transition:
-    border-color 120ms ease,
-    background 120ms ease;
+.panel-col > .panel {
+  margin-top: 0;
 }
-.dash-links a:hover {
-  border-color: var(--navy);
-  background: var(--surface-inset);
+
+/* Needs attention — each row links to the surface that resolves it. */
+.attn-list {
+  margin: 0;
+}
+.attn-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 9px 4px;
+  border-bottom: 1px solid var(--line);
+  color: inherit;
+}
+.attn-row:last-child {
+  border-bottom: none;
+}
+.attn-row:hover {
   text-decoration: none;
+  color: var(--navy);
+}
+.attn-row dt {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+.attn-row:hover dt {
+  color: var(--navy);
+}
+.attn-row dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Recent activity — compact bi-monetary feed. */
+.activity {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.activity li {
+  display: grid;
+  grid-template-columns: 5.5rem auto 1fr auto;
+  gap: 10px;
+  align-items: baseline;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.875rem;
+}
+.activity li:last-child {
+  border-bottom: none;
+}
+.activity .a-date {
+  color: var(--muted);
+}
+.activity .a-kind {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.activity .k-booking {
+  color: var(--pos);
+}
+.activity .k-expense {
+  color: var(--neg);
+}
+.activity .a-detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.activity .a-eur {
+  text-align: right;
+  font-weight: 600;
+}
+.activity-all {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--navy);
+}
+.empty-note {
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin: 4px 0;
+}
+
+@media (max-width: 720px) {
+  .panel-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ─── Auth (login) — no shell ───────────────────────────────── */
@@ -1343,6 +1744,32 @@ tr.total td {
 .chan-airbnb {
   border-color: #d83a47; /* Airbnb coral, darkened for AA contrast */
   color: #d83a47;
+}
+
+/* ─── Dark theme exceptions ──────────────────────────────────────
+ * The few spots that hardcode a hex instead of a token can't follow the
+ * token swap, so they're re-pointed here. Keep this list short — anything
+ * recurring belongs as a token, not an exception. */
+
+/* Alert hairline borders were baked as light pastels; tint from the signal hue instead. */
+:root[data-theme="dark"] .alert-error {
+  border-color: color-mix(in srgb, var(--neg) 40%, transparent);
+}
+:root[data-theme="dark"] .alert-warn {
+  border-color: color-mix(in srgb, var(--warn) 40%, transparent);
+}
+:root[data-theme="dark"] .alert-success {
+  border-color: color-mix(in srgb, var(--pos) 40%, transparent);
+}
+
+/* OTA brand colours are fixed by the brands; lift them off the dark canvas for contrast. */
+:root[data-theme="dark"] .chan-booking {
+  border-color: #4a90e2;
+  color: #6ba8ec;
+}
+:root[data-theme="dark"] .chan-airbnb {
+  border-color: #ff5a5f;
+  color: #ff7a7e;
 }
 
 /* ─── Motion discipline ─────────────────────────────────────── */
