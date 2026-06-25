@@ -10,8 +10,9 @@ import { partnerStatements } from "~/db/statements";
 import { createEntityForm } from "~/lib/createEntityForm";
 import { useI18n } from "~/lib/i18n";
 import { formatMoney, toCents } from "~/lib/money";
+import { runMutation } from "~/lib/mutation";
 import { can } from "~/lib/permissions";
-import { currentUser, recordAudit } from "~/lib/session";
+import { currentUser } from "~/lib/session";
 
 // ponytail: 3-line dupe of the same helper in expenses.tsx — cheaper than a shared
 // module for one DOM call; extract if a third row-menu appears.
@@ -63,23 +64,23 @@ const addCashEntry = action(async (form: FormData) => {
     return { error: "invalid" };
   }
   const cents = toCents(amount);
-  createCashEntry(db, {
-    date,
-    partnerId,
-    concept,
-    type,
-    amountEur: type === "withdrawal" ? -cents : cents,
+  return runMutation({ audit: ["create", "cashEntry"] }, () => {
+    createCashEntry(db, {
+      date,
+      partnerId,
+      concept,
+      type,
+      amountEur: type === "withdrawal" ? -cents : cents,
+    });
   });
-  await recordAudit("create", "cashEntry");
-  return { ok: true };
 }, "addCashEntry");
 
 const removeCashEntry = action(async (form: FormData) => {
   "use server";
   await requireCash();
-  deleteCashEntry(db, Number(form.get("id")));
-  await recordAudit("delete", "cashEntry");
-  return { ok: true };
+  return runMutation({ audit: ["delete", "cashEntry"] }, () => {
+    deleteCashEntry(db, Number(form.get("id")));
+  });
 }, "removeCashEntry");
 
 export default function Caja() {

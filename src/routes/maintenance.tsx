@@ -23,7 +23,7 @@ import {
 import { createEntityForm } from "~/lib/createEntityForm";
 import { useI18n } from "~/lib/i18n";
 import { runMutation } from "~/lib/mutation";
-import { currentUser, recordAudit, requireUser } from "~/lib/session";
+import { currentUser, requireUser } from "~/lib/session";
 
 interface Filter {
   season?: string;
@@ -72,9 +72,9 @@ const addTask = action(async (form: FormData) => {
   const expenseRaw = form.get("expenseId");
   const expenseId = expenseRaw ? Number(expenseRaw) : undefined;
   if (!description || !season) return { error: "invalid" };
-  createTask(db, { date: date || null, description, season, expenseId });
-  await recordAudit("create", "maintenanceTask");
-  return { ok: true };
+  return runMutation({ audit: ["create", "maintenanceTask"] }, () => {
+    createTask(db, { date: date || null, description, season, expenseId });
+  });
 }, "addTask");
 
 const editTaskAction = action(async (form: FormData) => {
@@ -103,9 +103,9 @@ const removeTask = action(async (form: FormData) => {
 const toggleTask = action(async (form: FormData) => {
   "use server";
   await requireUser();
-  setTaskStatus(db, Number(form.get("id")), form.get("status") === "done" ? "done" : "pending");
-  await recordAudit("update", "maintenanceTask");
-  return { ok: true };
+  return runMutation({ audit: ["update", "maintenanceTask"] }, () => {
+    setTaskStatus(db, Number(form.get("id")), form.get("status") === "done" ? "done" : "pending");
+  });
 }, "toggleTask");
 
 // Dismiss the native popover a menu button lives in — top-layer menus don't close on inner clicks.
