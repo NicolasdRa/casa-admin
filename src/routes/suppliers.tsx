@@ -121,11 +121,11 @@ export default function Suppliers() {
   // Select-all toggles the *visible* rows only — selection respects the active filter.
   const allVisibleSelected = () => view().length > 0 && view().every((s) => selected().has(s.id));
   const toggleAll = () =>
-    setSelected(allVisibleSelected() ? new Set() : new Set(view().map((s) => s.id)));
+    setSelected(allVisibleSelected() ? new Set<number>() : new Set(view().map((s) => s.id)));
 
   // Clear the selection once a bulk delete lands so the (now-gone) ids don't linger.
   createEffect(() => {
-    if (bulkRemoving.result?.ok) setSelected(new Set());
+    if (bulkRemoving.result?.ok) setSelected(new Set<number>());
   });
 
   const cols = () => (canManage() ? 3 : 1);
