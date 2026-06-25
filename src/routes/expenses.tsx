@@ -1,4 +1,4 @@
-import { A, action, createAsync, query, useSubmission } from "@solidjs/router";
+import { A, action, createAsync, query, useSearchParams, useSubmission } from "@solidjs/router";
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { AppShell } from "~/components/AppShell";
 import { useConfirm } from "~/components/ConfirmProvider";
@@ -224,15 +224,22 @@ export default function Expenses() {
   const [date, setDate] = createSignal(todayLocal());
   const [amount, setAmount] = createSignal(0);
   const [currency, setCurrency] = createSignal<"ARS" | "EUR">("EUR");
+  // CA-126: the filters/sort live in the URL (same URL-as-state idiom as bookings/maintenance), so a
+  // filtered view is shareable and survives reload. Filtering stays client-side — these params, not
+  // local signals, are just the source of truth. setParams merges, so each control sets one key and
+  // clears it (undefined) when reset to its default, keeping the URL clean.
+  const [params, setParams] = useSearchParams();
+  const str = (k: string) => (typeof params[k] === "string" ? (params[k] as string) : "");
   // EX-10: filter the ledger by payer. "all" | "none" (unassigned) | user id.
-  const [payerFilter, setPayerFilter] = createSignal<string>("all");
+  const payerFilter = () => str("payer") || "all";
   // CA-115: filter by supplier. "all" | "none" (no supplier) | supplier id.
-  const [supplierFilter, setSupplierFilter] = createSignal<string>("all");
+  const supplierFilter = () => str("supplier") || "all";
   // CA-116: optional sort by supplier name. null = keep the default date-desc order from the query.
-  const [supplierSort, setSupplierSort] = createSignal<"asc" | "desc" | null>(null);
+  const supplierSort = (): "asc" | "desc" | null =>
+    str("sort") === "asc" ? "asc" : str("sort") === "desc" ? "desc" : null;
   // CA-99: inclusive date-range filter on the ledger. "" on either side = open on that side.
-  const [dateFrom, setDateFrom] = createSignal("");
-  const [dateTo, setDateTo] = createSignal("");
+  const dateFrom = () => str("from");
+  const dateTo = () => str("to");
   // CA-117: bulk-reimburse selection, a Set of expense ids.
   const [selected, setSelected] = createSignal<Set<number>>(new Set());
   // Add-expense lives in a modal so the ledger keeps the page; opened from the primary action.
@@ -582,17 +589,24 @@ export default function Expenses() {
           aria-label={t("expenses.dateFrom")}
           value={dateFrom()}
           max={dateTo() || undefined}
-          onInput={(e) => setDateFrom(e.currentTarget.value)}
+          onInput={(e) => setParams({ from: e.currentTarget.value || undefined })}
         />
         <input
           type="date"
           aria-label={t("expenses.dateTo")}
           value={dateTo()}
           min={dateFrom() || undefined}
-          onInput={(e) => setDateTo(e.currentTarget.value)}
+          onInput={(e) => setParams({ to: e.currentTarget.value || undefined })}
         />
         <span class="toolbar-label">{t("expenses.filterByPayer")}</span>
-        <select value={payerFilter()} onChange={(e) => setPayerFilter(e.currentTarget.value)}>
+        <select
+          value={payerFilter()}
+          onChange={(e) =>
+            setParams({
+              payer: e.currentTarget.value === "all" ? undefined : e.currentTarget.value,
+            })
+          }
+        >
           <option value="all">{t("expenses.allUsers")}</option>
           <For each={me().users}>{(u) => <option value={u.id}>{u.name}</option>}</For>
           <option value="none">{t("expenses.unassigned")}</option>
@@ -600,7 +614,11 @@ export default function Expenses() {
         <span class="toolbar-label">{t("expenses.filterBySupplier")}</span>
         <select
           value={supplierFilter()}
-          onChange={(e) => setSupplierFilter(e.currentTarget.value)}
+          onChange={(e) =>
+            setParams({
+              supplier: e.currentTarget.value === "all" ? undefined : e.currentTarget.value,
+            })
+          }
           aria-label={t("expenses.filterBySupplier")}
         >
           <option value="all">{t("expenses.allSuppliers")}</option>
@@ -655,9 +673,10 @@ export default function Expenses() {
                 <button
                   type="button"
                   class="th-sort"
-                  onClick={() =>
-                    setSupplierSort((d) => (d === "asc" ? "desc" : d === "desc" ? null : "asc"))
-                  }
+                  onClick={() => {
+                    const d = supplierSort();
+                    setParams({ sort: d === "asc" ? "desc" : d === "desc" ? undefined : "asc" });
+                  }}
                   aria-label={t("expenses.sortBySupplier")}
                 >
                   {t("expenses.supplier")}{" "}
