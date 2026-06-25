@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { CodedError } from "../lib/errors.ts";
 import {
   createCategory,
   createExpense,
+  deleteExpense,
   expenseTotalsByUser,
   getExpenseById,
   listExpenses,
@@ -168,6 +170,34 @@ test("markExpenseReimbursed moves a co-host expense pending -> reimbursed (EX-9)
   assert.equal(row.reimbursedAt, "2026-06-20");
   assert.equal(row.reimbursedByUserId, admin.id);
   assert.equal(reimbursementStatus(row, getUserById(db, cohost.id)), "reimbursed");
+});
+
+test("deleteExpense removes an unsettled expense but refuses a reimbursed one (CA-110)", () => {
+  const { db, cohost, admin } = dbWithOwnerAndCohost();
+  // A plain, unsettled expense deletes cleanly.
+  const a = createExpense(db, {
+    date: "2026-06-18",
+    currency: "EUR",
+    amount: 1000,
+    paidByUserId: cohost.id,
+  });
+  deleteExpense(db, a.id);
+  assert.equal(getExpenseById(db, a.id), null);
+
+  // A reimbursed expense is already reflected in the Caja — deleting it would orphan that
+  // movement, so the guard refuses (reverse the reimbursement first).
+  const b = createExpense(db, {
+    date: "2026-06-18",
+    currency: "EUR",
+    amount: 2000,
+    paidByUserId: cohost.id,
+  });
+  markExpenseReimbursed(db, b.id, admin.id, "2026-06-20");
+  assert.throws(
+    () => deleteExpense(db, b.id),
+    (e) => e instanceof CodedError && e.code === "settled",
+  );
+  assert.ok(getExpenseById(db, b.id)); // untouched
 });
 
 test("markExpenseReimbursed rejects a not_applicable (owner-paid) expense (EX-9)", () => {

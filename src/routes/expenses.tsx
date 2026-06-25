@@ -14,6 +14,7 @@ import { Modal } from "~/components/Modal";
 import { ensureFxRate } from "~/db/bna";
 import {
   createExpense,
+  deleteExpense,
   markExpenseReimbursed,
   receiptPlan,
   reimburseExpenses,
@@ -29,7 +30,7 @@ import { inDateRange } from "~/lib/dateRange";
 import { useI18n } from "~/lib/i18n";
 import { formatMoney, toCents } from "~/lib/money";
 import { runMutation } from "~/lib/mutation";
-import { defaultEntryCurrency, mayReimburse } from "~/lib/permissions";
+import { can, defaultEntryCurrency, mayReimburse } from "~/lib/permissions";
 import { recordAudit, requireUser } from "~/lib/session";
 
 // Dismiss the native popover a menu button lives in — top-layer menus don't close on inner clicks.
@@ -54,6 +55,8 @@ const meAndUsersQuery = query(async () => {
     canReimburse: mayReimburse(me),
     // CA-117: bulk reimburse is one tier stricter than the per-row action.
     canBulkReimburse: me.role === "superadmin" && mayReimburse(me),
+    // CA-110: admin+ may delete an expense (the db guard still blocks a settled one).
+    canDelete: can(me.role, "deleteExpenses"),
     defaultCurrency: defaultEntryCurrency(me.role),
     users,
   };
@@ -160,6 +163,18 @@ const settleExpenseAction = action(async (form: FormData) => {
   return { ok: true };
 }, "settleExpense");
 
+// CA-110: admin deletes an expense. Permission is gated here; the db guard still refuses a
+// reimbursed/settled one (it's already reflected in the Caja) by throwing CodedError("settled").
+const deleteExpenseAction = action(async (form: FormData) => {
+  "use server";
+  const me = await requireUser();
+  if (!can(me.role, "deleteExpenses")) return { error: "forbidden" };
+  const id = Number(form.get("id"));
+  return runMutation({ audit: ["delete", `expense:${id}`] }, () => {
+    deleteExpense(db, id);
+  });
+}, "deleteExpense");
+
 // Edit an expense's classification (detail/category/supplier) from the row action menu. Money,
 // currency, date and the FX snapshot are entered once and never editable here.
 const editExpense = action(async (form: FormData) => {
@@ -199,6 +214,7 @@ export default function Expenses() {
       meId: 0,
       canReimburse: false,
       canBulkReimburse: false,
+      canDelete: false,
       defaultCurrency: "EUR" as const,
       users: [],
     },
@@ -224,6 +240,7 @@ export default function Expenses() {
   const settleSub = useSubmission(settleExpenseAction);
   const editSub = useSubmission(editExpense);
   const bulkReSub = useSubmission(bulkReimburseExpenses);
+  const delSub = useSubmission(deleteExpenseAction);
   // The expense whose edit modal is open (null = closed). Holds the row so the form pre-fills.
   const [editing, setEditing] = createSignal<ExpenseRow | null>(null);
   const supplierNameById = createMemo(() => new Map(suppliers().map((s) => [s.id, s.name])));
@@ -233,7 +250,7 @@ export default function Expenses() {
   // Translate a returned error code to a human, localized message; raw codes never render.
   const errMsg = (code: string) => t(`expenses.err_${code}` as Parameters<typeof t>[0]) as string;
   // Which row's reimburse / settle is mid-flight (so only that button shows pending).
-  const pendingId = (sub: typeof reSub | typeof settleSub) =>
+  const pendingId = (sub: typeof reSub | typeof settleSub | typeof delSub) =>
     sub.pending ? Number((sub.input?.[0] as FormData | undefined)?.get("id")) : null;
 
   let amountEl: HTMLInputElement | undefined;
@@ -521,6 +538,13 @@ export default function Expenses() {
           </p>
         )}
       </Show>
+      <Show when={delSub.result?.error}>
+        {(code) => (
+          <p class="alert alert-error" role="alert">
+            {errMsg(code())}
+          </p>
+        )}
+      </Show>
       <Show when={bulkReSub.result?.error}>
         {(code) => (
           <p class="alert alert-error" role="alert">
@@ -800,6 +824,33 @@ export default function Expenses() {
                             {pendingId(settleSub) === e.id
                               ? t("common.saving")
                               : t("expenses.settle")}
+                          </button>
+                        </form>
+                      </Show>
+                      {/* CA-110: admin-only delete; db guard still refuses a reimbursed expense. */}
+                      <Show when={me().canDelete}>
+                        <form action={deleteExpenseAction} method="post">
+                          <input type="hidden" name="id" value={e.id} />
+                          <button
+                            type="submit"
+                            class="menu-item menu-item-danger"
+                            disabled={pendingId(delSub) === e.id}
+                            onClick={async (ev) => {
+                              ev.preventDefault();
+                              const button = ev.currentTarget;
+                              const form = button.form;
+                              if (
+                                await confirm({
+                                  message: t("expenses.confirmDelete"),
+                                  danger: true,
+                                })
+                              ) {
+                                closePopover(button);
+                                form?.requestSubmit();
+                              }
+                            }}
+                          >
+                            {pendingId(delSub) === e.id ? t("common.saving") : t("expenses.delete")}
                           </button>
                         </form>
                       </Show>

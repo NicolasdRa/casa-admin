@@ -161,6 +161,18 @@ export function deleteCategory(db: Db, id: number) {
   db.delete(schema.categories).where(eq(schema.categories.id, id)).run();
 }
 
+/** CA-110: delete an expense outright (admin-gated at the route). A reimbursed/settled expense is
+ *  already reflected in the Caja (settleExpense posts a withdrawal), so deleting it would orphan that
+ *  movement and unbalance the books — guard like deleteBooking and refuse, telling the user to reverse
+ *  the reimbursement first. The immutable FX snapshot dies with an unsettled expense. */
+export function deleteExpense(db: Db, id: number) {
+  const e = getExpenseById(db, id);
+  if (!e) throw new CodedError("notFound", "expense not found");
+  if (e.reimbursedAt != null)
+    throw new CodedError("settled", "expense is reimbursed/settled — reverse it in Caja first");
+  db.delete(schema.expenses).where(eq(schema.expenses.id, id)).run();
+}
+
 /** EX-8: total EUR (cents) fronted, grouped by payer. Null payer (unattributed) gets its own bucket. */
 export function expenseTotalsByUser(db: Db) {
   const nameById = new Map(listUsers(db).map((u) => [u.id, u.name]));
