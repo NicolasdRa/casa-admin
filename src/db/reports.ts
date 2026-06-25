@@ -1,7 +1,10 @@
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { accruedCommissionEur, listBookings, rentalIncomeEur } from "./bookings.ts";
+import { listCashLedger } from "./cash.ts";
 import { listCategories, listExpenses } from "./expenses.ts";
+import { listTasks } from "./maintenance.ts";
 import type * as schema from "./schema.ts";
+import { ownerSettlement } from "./settlement.ts";
 
 type Db = BetterSQLite3Database<typeof schema>;
 
@@ -121,4 +124,78 @@ export function dashboardSummary(db: Db) {
   const expenses = listExpenses(db).reduce((s, e) => s + e.amountEur, 0);
   const commission = accruedCommissionEur(db);
   return { income, expenses, commission, netResult: income - commission - expenses };
+}
+
+export type Period = "month" | "year" | "all";
+
+interface PnlWindow {
+  income: number; // EUR cents
+  commission: number; // EUR cents
+  expenses: number; // EUR cents
+  netResult: number; // income - commission - expenses
+}
+
+export interface PeriodSummary extends PnlWindow {
+  period: Period;
+  prev: PnlWindow | null; // prior comparable period; null for "all"
+}
+
+const prevMonthKey = (ym: string): string => {
+  const [y, m] = ym.split("-").map(Number);
+  return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
+};
+
+// Sum income/commission/expenses over the rows whose date matches `inWindow`. Same shape as
+// annualPnl's core, but window-agnostic so month/year/all share one path.
+function pnlWindow(db: Db, inWindow: (date: string) => boolean): PnlWindow {
+  const bookings = listBookings(db).filter((b) => inWindow(b.date));
+  const income = bookings.reduce((s, b) => s + b.amountEur, 0);
+  const commission = bookings.reduce((s, b) => s + b.commissionEur, 0);
+  const expenses = listExpenses(db)
+    .filter((e) => inWindow(e.date))
+    .reduce((s, e) => s + e.amountEur, 0);
+  return { income, commission, expenses, netResult: income - commission - expenses };
+}
+
+/** CA-119 panel: dashboard figures scoped to a period (month/year/all) with a prior-period
+ *  comparison for deltas. `today` is an ISO date passed by the caller so the result is pinned
+ *  and testable (dates are lexical YYYY-MM-DD, no Date objects in storage). */
+export function periodSummary(db: Db, period: Period, today: string): PeriodSummary {
+  if (period === "all") return { period, ...pnlWindow(db, () => true), prev: null };
+  const sliceOf = (d: string) => (period === "year" ? d.slice(0, 4) : d.slice(0, 7));
+  const curKey = sliceOf(today);
+  const prevKey = period === "year" ? String(Number(curKey) - 1) : prevMonthKey(curKey);
+  return {
+    period,
+    ...pnlWindow(db, (d) => sliceOf(d) === curKey),
+    prev: pnlWindow(db, (d) => sliceOf(d) === prevKey),
+  };
+}
+
+export interface DashboardAttention {
+  maintenanceOpen: number; // pending maintenance tasks
+  cajaBalance: number; // current caja running balance, EUR cents
+  upcomingCheckIns: number; // bookings checking in within the next 7 days (inclusive)
+  settlementDue: number; // EUR cents that must change hands to square owners (Σ positive expenseNet)
+}
+
+// ISO date + n days, UTC-anchored so it stays lexical and TZ-free.
+const addDays = (iso: string, n: number): string => {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+};
+
+/** CA-119 panel: "needs attention" signals — leading, operational, period-independent. */
+export function dashboardAttention(db: Db, today: string): DashboardAttention {
+  const ledger = listCashLedger(db);
+  const window = addDays(today, 7);
+  return {
+    maintenanceOpen: listTasks(db, { status: "pending" }).length,
+    cajaBalance: ledger.length ? ledger[ledger.length - 1].runningBalance : 0,
+    upcomingCheckIns: listBookings(db).filter(
+      (b) => b.type === "booking" && b.date >= today && b.date <= window,
+    ).length,
+    settlementDue: ownerSettlement(db).owners.reduce((s, o) => s + Math.max(0, o.expenseNet), 0),
+  };
 }

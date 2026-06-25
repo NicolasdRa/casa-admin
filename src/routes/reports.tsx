@@ -1,7 +1,8 @@
 import { createAsync, query, useSearchParams } from "@solidjs/router";
-import { createMemo, For, Show } from "solid-js";
+import { For, Show } from "solid-js";
 import { AppShell } from "~/components/AppShell";
 import { FxTrend } from "~/components/FxTrend";
+import { IncomeExpenseChart } from "~/components/IncomeExpenseChart";
 import { commissionBalance } from "~/db/commission";
 import { db } from "~/db/index";
 import {
@@ -65,14 +66,6 @@ export default function Reports() {
     return s ? `?${s}` : "?";
   };
   const money = (c: number) => formatMoney(c, locale());
-  // Chart scale: longest income/expense bar across months.
-  const maxMonth = createMemo(() => {
-    const m = data()?.monthly ?? [];
-    return Math.max(1, ...m.map((x) => Math.max(x.income, x.expense)));
-  });
-  const bar = (v: number, color: string) => (
-    <div class="bar" style={{ background: color, width: `${(v / maxMonth()) * 100}%` }} />
-  );
 
   return (
     <AppShell>
@@ -236,31 +229,7 @@ export default function Reports() {
             {/* RP-6 charts */}
             <section class="panel panel-pad">
               <h2 style={{ "margin-bottom": "12px" }}>{t("reports.charts")}</h2>
-              <For each={d().monthly}>
-                {(m) => (
-                  <div class="chart-row">
-                    <span class="m">{m.month}</span>
-                    <div>
-                      {bar(m.income, "var(--pos)")}
-                      {bar(m.expense, "var(--neg)")}
-                    </div>
-                    <div class="chart-vals num">
-                      <span style={{ color: "var(--pos)" }}>{money(m.income)}</span>
-                      <span style={{ color: "var(--neg)" }}>{money(m.expense)}</span>
-                    </div>
-                  </div>
-                )}
-              </For>
-              <p class="legend">
-                <span>
-                  <span class="swatch" style={{ background: "var(--pos)" }} />
-                  {t("reports.income")}
-                </span>
-                <span>
-                  <span class="swatch" style={{ background: "var(--neg)" }} />
-                  {t("reports.expenses")}
-                </span>
-              </p>
+              <IncomeExpenseChart data={d().monthly} />
               <div style={{ "margin-top": "16px" }}>
                 <FxTrend />
               </div>
