@@ -1746,6 +1746,83 @@ th.sub {
   color: #d83a47;
 }
 
+/* ─── Toasts — transient corner notifications (CA-90) ─────────────
+ * A fixed stack of dismissable messages; a left accent carries the kind (never colour alone —
+ * the message text states the outcome). Uses the one allowed transient-overlay shadow. */
+
+.toast-stack {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: var(--z-tooltip);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(92vw, 22rem);
+  pointer-events: none; /* let clicks pass through the gaps; toasts re-enable it */
+}
+/* On mobile, clear the fixed bottom tab bar. */
+@media (max-width: 880px) {
+  .toast-stack {
+    bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: auto;
+  padding: 10px 10px 10px 14px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-left: 3px solid var(--navy);
+  border-radius: var(--radius);
+  box-shadow: var(--pop-shadow);
+  font-size: 0.875rem;
+  font-weight: 500;
+  animation: toast-in 180ms ease;
+}
+.toast-msg {
+  flex: 1;
+}
+/* Dismiss affordance — a quiet ghost button, not the app's solid navy default. */
+.toast-x {
+  flex: none;
+  min-height: 0;
+  padding: 2px 6px;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--faint);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.toast-x:hover {
+  color: var(--ink);
+  background: none;
+  border: none;
+}
+.toast-success {
+  border-left-color: var(--pos);
+}
+.toast-error {
+  border-left-color: var(--neg);
+}
+.toast-info {
+  border-left-color: var(--navy);
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* ─── Dark theme exceptions ──────────────────────────────────────
  * The few spots that hardcode a hex instead of a token can't follow the
  * token swap, so they're re-pointed here. Keep this list short — anything

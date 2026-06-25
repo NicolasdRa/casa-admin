@@ -11,6 +11,7 @@ import {
 } from "~/components/ExpensesSummary";
 import { FxPreview } from "~/components/FxPreview";
 import { Modal } from "~/components/Modal";
+import { useToast } from "~/components/ToastProvider";
 import { ensureFxRate } from "~/db/bna";
 import {
   createExpense,
@@ -266,6 +267,12 @@ export default function Expenses() {
   // Close the edit modal once its save lands.
   createEffect(() => {
     if (editSub.result?.ok) setEditing(null);
+  });
+
+  // CA-90: a deleted row just vanishes from the ledger — a toast confirms it actually happened.
+  const toast = useToast();
+  createEffect(() => {
+    if (delSub.result?.ok) toast(t("common.deleted"), "success");
   });
 
   // Filter + sort are client-side: the ledger is already loaded and small, so a round-trip would

@@ -25,6 +25,7 @@ export const es = {
     saving: "Guardando…",
     close: "Cerrar",
     saved: "Guardado.",
+    deleted: "Eliminado.",
     manualRate: "Cambio manual",
     actions: "Acciones",
     edit: "Editar",

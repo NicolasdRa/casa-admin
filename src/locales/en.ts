@@ -21,6 +21,7 @@ export const en = {
     saving: "Saving…",
     close: "Close",
     saved: "Saved.",
+    deleted: "Deleted.",
     manualRate: "Manual rate",
     actions: "Actions",
     edit: "Edit",
