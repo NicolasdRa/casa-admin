@@ -3,7 +3,7 @@ import { For, type JSX, Show } from "solid-js";
 import { useI18n } from "~/lib/i18n";
 import { can } from "~/lib/permissions";
 import { clearSession, currentUser } from "~/lib/session";
-import { theme, toggleTheme } from "~/lib/theme";
+import { toggleTheme } from "~/lib/theme";
 
 const currentUserQuery = query(async () => {
   "use server";
@@ -56,7 +56,8 @@ function Icon(props: { name: "home" | "cal" | "receipt" | "chart" | "more" }) {
   );
 }
 
-// Sun when dark (tap → light), moon when light (tap → dark). Reactive on the theme signal.
+// Sun when dark (tap → light), moon when light (tap → dark). Both glyphs always render
+// identically on server + client; CSS swaps them by [data-theme] so SSR can't mismatch.
 function ThemeGlyph() {
   return (
     <svg
@@ -70,13 +71,13 @@ function ThemeGlyph() {
       stroke-linejoin="round"
       aria-hidden="true"
     >
-      <Show
-        when={theme() === "dark"}
-        fallback={<path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z" />}
-      >
+      <g class="glyph-moon">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z" />
+      </g>
+      <g class="glyph-sun">
         <circle cx="12" cy="12" r="4" />
         <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-      </Show>
+      </g>
     </svg>
   );
 }

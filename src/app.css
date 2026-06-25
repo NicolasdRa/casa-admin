@@ -73,6 +73,18 @@
  * to cut glare over long entry sessions), near-white ink (not #fff, same reason),
  * and brighter signal hues so emerald/rose/amber still clear contrast on dark.
  * Only token VALUES change here — every component re-skins automatically. */
+/* Theme toggle glyph: moon shows in light, sun in dark. Swapped by attribute so
+   SSR (always light) and client hydration render identical DOM — no mismatch. */
+.glyph-sun {
+  display: none;
+}
+:root[data-theme="dark"] .glyph-sun {
+  display: inline;
+}
+:root[data-theme="dark"] .glyph-moon {
+  display: none;
+}
+
 :root[data-theme="dark"] {
   color-scheme: dark;
 
