@@ -40,3 +40,18 @@ export function resolveRate<T extends { date: string }>(date: string, rates: T[]
     null,
   );
 }
+
+export type TrendRange = "week" | "month" | "year";
+
+/**
+ * Inclusive ISO start date for a trend preset, counted back from `today` (ISO "YYYY-MM-DD"):
+ * week = 7 days, month/year = calendar (same day, prior month/year). UTC math so it's
+ * timezone-stable; month-end overflow (e.g. Mar 31 → Mar 3) is acceptable for a chart cutoff.
+ */
+export function trendRangeStart(range: TrendRange, today: string): string {
+  const d = new Date(`${today}T00:00:00Z`);
+  if (range === "week") d.setUTCDate(d.getUTCDate() - 7);
+  else if (range === "month") d.setUTCMonth(d.getUTCMonth() - 1);
+  else d.setUTCFullYear(d.getUTCFullYear() - 1);
+  return d.toISOString().slice(0, 10);
+}

@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { bnaAverage, commissionEur, resolveRate, snapshot } from "./fx.ts";
+import { bnaAverage, commissionEur, resolveRate, snapshot, trendRangeStart } from "./fx.ts";
+
+test("trendRangeStart counts back week/month/year from today (UTC, calendar)", () => {
+  assert.equal(trendRangeStart("week", "2026-06-25"), "2026-06-18"); // -7 days
+  assert.equal(trendRangeStart("month", "2026-06-25"), "2026-05-25"); // prior month, same day
+  assert.equal(trendRangeStart("year", "2026-06-25"), "2025-06-25"); // prior year
+  assert.equal(trendRangeStart("week", "2026-03-03"), "2026-02-24"); // crosses month boundary
+});
 
 test("bnaAverage = (compra + venta) / 2", () => {
   assert.equal(bnaAverage(1000, 1100), 1050);

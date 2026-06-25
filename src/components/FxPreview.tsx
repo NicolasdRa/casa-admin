@@ -1,10 +1,10 @@
 import { createAsync, query } from "@solidjs/router";
-import { Show } from "solid-js";
+import { Show, Suspense } from "solid-js";
 import { getFxRate } from "~/db/fx";
 import { db } from "~/db/index";
 import { snapshot } from "~/lib/fx";
 import { useI18n } from "~/lib/i18n";
-import { formatMoney, toCents } from "~/lib/money";
+import { formatMoney, formatRate, toCents } from "~/lib/money";
 import { requireUser } from "~/lib/session";
 
 const rateForDate = query(async (date: string) => {
@@ -35,30 +35,36 @@ export function FxPreview(props: {
     return { eur: formatMoney(s.amountEur, locale()), ars: formatMoney(s.amountArs, locale()) };
   };
 
+  // Suspense contains the per-date refetch: createAsync re-suspends on date change, and without a
+  // local boundary that bubbles to the route shell — which detaches & re-inserts the host <dialog>,
+  // dropping it from the top layer (backdrop gone, modal reflows). Catching it here keeps the dialog
+  // untouched; the note simply blanks for the in-flight moment.
   return (
-    <Show when={props.date && rate() !== undefined}>
-      <Show
-        when={rate()}
-        fallback={
-          <Show when={props.autoFetch} fallback={<p class="note note-neg">{t("fx.noRate")}</p>}>
-            <p class="note">{t("fx.willFetch")}</p>
-          </Show>
-        }
-      >
-        {(r) => (
-          <p class="note">
-            {t("common.rate")}: {r().average} ({r().date})
-            <Show when={converted()}>
-              {(c) => (
-                <span>
-                  {" "}
-                  — ≈ {c().eur} EUR / {c().ars} ARS
-                </span>
-              )}
+    <Suspense>
+      <Show when={props.date && rate() !== undefined}>
+        <Show
+          when={rate()}
+          fallback={
+            <Show when={props.autoFetch} fallback={<p class="note note-neg">{t("fx.noRate")}</p>}>
+              <p class="note">{t("fx.willFetch")}</p>
             </Show>
-          </p>
-        )}
+          }
+        >
+          {(r) => (
+            <p class="note">
+              {t("common.rate")}: {formatRate(r().average, locale())} ARS ({r().date})
+              <Show when={converted()}>
+                {(c) => (
+                  <span>
+                    {" "}
+                    — ≈ {c().eur} EUR / {c().ars} ARS
+                  </span>
+                )}
+              </Show>
+            </p>
+          )}
+        </Show>
       </Show>
-    </Show>
+    </Suspense>
   );
 }
