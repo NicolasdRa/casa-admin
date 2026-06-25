@@ -17,9 +17,7 @@ import {
   createExpense,
   deleteExpense,
   markExpenseReimbursed,
-  receiptPlan,
   reimburseExpenses,
-  safeExt,
   setExpenseReceipt,
   updateExpenseMeta,
 } from "~/db/expenses";
@@ -32,6 +30,7 @@ import { useI18n } from "~/lib/i18n";
 import { formatMoney, toCents } from "~/lib/money";
 import { runMutation } from "~/lib/mutation";
 import { can, defaultEntryCurrency, mayReimburse } from "~/lib/permissions";
+import { persistReceipt } from "~/lib/receipt";
 import { recordAudit, requireUser } from "~/lib/session";
 
 // Dismiss the native popover a menu button lives in — top-layer menus don't close on inner clicks.
@@ -97,29 +96,7 @@ const addExpense = action(async (form: FormData) => {
     // EX-6: store the receipt under a server-controlled filename (no user-controlled path).
     const receipt = form.get("receipt");
     if (receipt instanceof File && receipt.size > 0) {
-      const { mkdir, writeFile } = await import("node:fs/promises");
-      const dir = process.env.UPLOAD_DIR ?? "uploads";
-      await mkdir(dir, { recursive: true });
-      let data: Buffer = Buffer.from(await receipt.arrayBuffer());
-      let ext = safeExt(receipt.name) || "bin";
-      if (receiptPlan(receipt.type) === "webp") {
-        // Downscale huge phone photos + normalise to webp; .rotate() honours EXIF orientation.
-        // Optional optimisation: if sharp can't load (native libvips missing), store the original.
-        try {
-          const sharp = (await import("sharp")).default;
-          data = await sharp(data)
-            .rotate()
-            .resize(2000, 2000, { fit: "inside", withoutEnlargement: true })
-            .webp({ quality: 80 })
-            .toBuffer();
-          ext = "webp";
-        } catch (err) {
-          console.error("sharp unavailable; storing original receipt:", (err as Error).message);
-        }
-      }
-      const fname = `receipt-${row.id}.${ext}`;
-      await writeFile(`${dir}/${fname}`, data);
-      setExpenseReceipt(db, row.id, fname);
+      setExpenseReceipt(db, row.id, await persistReceipt(receipt, row.id));
     }
   });
 }, "addExpense");

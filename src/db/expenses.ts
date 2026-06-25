@@ -21,17 +21,6 @@ export interface NewExpense {
   paidByUserId?: number; // EX-8: who fronted it in full; omit for unattributed (import/blank)
 }
 
-/** Lowercased file extension restricted to [a-z0-9] (max 5). "" if none — guards against odd names. */
-export function safeExt(filename: string): string {
-  const m = /\.([A-Za-z0-9]{1,5})$/.exec(filename);
-  return m ? m[1].toLowerCase() : "";
-}
-
-/** EX-6: raster images are normalised to webp (downscaled); everything else (PDFs, etc.) stored as-is. */
-export function receiptPlan(mimeType: string): "webp" | "passthrough" {
-  return mimeType.startsWith("image/") && mimeType !== "image/svg+xml" ? "webp" : "passthrough";
-}
-
 /** Record an expense, snapshotting the FX rate + both currencies immutably onto the row. */
 export function createExpense(db: Db, input: NewExpense) {
   assertIsoDate(input.date);
