@@ -52,6 +52,12 @@ The full data model lives in `src/db/schema.ts` (all phases) and remains the sou
 
 `src/lib/i18n.ts` exposes `I18nProvider` / `useI18n()` (`t`, `locale`, `setLocale`). Dictionaries in `src/locales/{es,en}.ts`. Locale currently lives in a module signal (acceptable for now; per-user persistence via `settings.default_locale` is a later phase).
 
+## Reusable components (required)
+
+Any UI block that appears on more than one route lives as a **single self-contained component** under `src/components/` — never copied inline per route. The component **owns its own data** (`query` + `createAsync`) and **exports those queries** so co-located routes share one cached source; routes vary behaviour through **props**, not duplication. The canonical example is `src/components/ExpensesSummary.tsx`: it owns the `expenses`/`suppliers`/`categories` queries (the expenses page imports them from there), and serves both `/expenses` (via a `filtered` prop) and the panel (via a `title` prop) from one definition.
+
+When a second route needs an existing inline block, **extract it into a component first**, then reuse — do not paste the JSX. Same rule for repeated presentational fragments (e.g. `PieBreakdown`): one component, many call sites.
+
 ## Style
 
 The repo uses `ponytail:` comments to mark deliberate simplifications and name their upgrade path. Respect them — they are intent, not omissions.

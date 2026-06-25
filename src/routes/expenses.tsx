@@ -2,14 +2,18 @@ import { A, action, createAsync, query, useSubmission } from "@solidjs/router";
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { AppShell } from "~/components/AppShell";
 import { useConfirm } from "~/components/ConfirmProvider";
+import {
+  type ExpenseRow,
+  ExpensesSummary,
+  listCategoriesQuery,
+  listExpensesQuery,
+  listSuppliersQuery,
+} from "~/components/ExpensesSummary";
 import { FxPreview } from "~/components/FxPreview";
 import { Modal } from "~/components/Modal";
 import { ensureFxRate } from "~/db/bna";
 import {
   createExpense,
-  expenseTotalsByUser,
-  listCategories,
-  listExpensesWithPayer,
   markExpenseReimbursed,
   receiptPlan,
   reimburseExpenses,
@@ -19,7 +23,6 @@ import {
 } from "~/db/expenses";
 import { db } from "~/db/index";
 import { settleExpense } from "~/db/settlement";
-import { listSuppliers } from "~/db/suppliers";
 import { listUsers } from "~/db/users";
 import { createEntityForm } from "~/lib/createEntityForm";
 import { useI18n } from "~/lib/i18n";
@@ -27,8 +30,6 @@ import { formatMoney, toCents } from "~/lib/money";
 import { runMutation } from "~/lib/mutation";
 import { defaultEntryCurrency, mayReimburse } from "~/lib/permissions";
 import { recordAudit, requireUser } from "~/lib/session";
-
-type ExpenseRow = ReturnType<typeof listExpensesWithPayer>[number];
 
 // Dismiss the native popover a menu button lives in — top-layer menus don't close on inner clicks.
 function closePopover(el: HTMLElement) {
@@ -41,30 +42,6 @@ const todayLocal = () => {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 };
-
-const listExpensesQuery = query(async () => {
-  "use server";
-  await requireUser();
-  return listExpensesWithPayer(db);
-}, "expenses");
-
-const listCategoriesQuery = query(async () => {
-  "use server";
-  await requireUser();
-  return listCategories(db);
-}, "categories");
-
-const listSuppliersQuery = query(async () => {
-  "use server";
-  await requireUser();
-  return listSuppliers(db);
-}, "suppliers");
-
-const userTotalsQuery = query(async () => {
-  "use server";
-  await requireUser();
-  return expenseTotalsByUser(db);
-}, "expenseUserTotals");
 
 // Payer options + who I am (for the form default and to gate the reimburse action in the UI).
 const meAndUsersQuery = query(async () => {
@@ -206,7 +183,6 @@ export const route = {
     listExpensesQuery();
     listCategoriesQuery();
     listSuppliersQuery();
-    userTotalsQuery();
     meAndUsersQuery();
   },
 };
@@ -217,7 +193,6 @@ export default function Expenses() {
   const expenses = createAsync(() => listExpensesQuery(), { initialValue: [] });
   const categories = createAsync(() => listCategoriesQuery(), { initialValue: [] });
   const suppliers = createAsync(() => listSuppliersQuery(), { initialValue: [] });
-  const userTotals = createAsync(() => userTotalsQuery(), { initialValue: [] });
   const me = createAsync(() => meAndUsersQuery(), {
     initialValue: {
       meId: 0,
@@ -306,10 +281,10 @@ export default function Expenses() {
   const allSelected = () =>
     selectable().length > 0 && selectable().every((e) => selected().has(e.id));
   const toggleAll = () =>
-    setSelected(allSelected() ? new Set() : new Set(selectable().map((e) => e.id)));
+    setSelected(allSelected() ? new Set<number>() : new Set(selectable().map((e) => e.id)));
   // Drop the selection once a bulk reimburse lands so the (now non-pending) ids don't linger.
   createEffect(() => {
-    if (bulkReSub.result?.ok) setSelected(new Set());
+    if (bulkReSub.result?.ok) setSelected(new Set<number>());
   });
 
   const unattributed = createMemo(() => {
@@ -520,6 +495,9 @@ export default function Expenses() {
           )}
         </Show>
       </Modal>
+
+      {/* CA-119: gross EUR summary at the top; charts track the page's filtered set. */}
+      <ExpensesSummary filtered={visible()} />
 
       {/* Row actions (reimburse / settle) surface their outcome here rather than failing silently. */}
       <Show when={reSub.result?.error}>
@@ -811,26 +789,6 @@ export default function Expenses() {
           </tbody>
         </table>
       </div>
-
-      <Show when={userTotals().length > 0}>
-        <section class="panel">
-          <div class="panel-head">
-            <h2>{t("expenses.totalsByUser")}</h2>
-          </div>
-          <table>
-            <tbody>
-              <For each={userTotals()}>
-                {(u) => (
-                  <tr>
-                    <td>{u.name ?? t("expenses.unassigned")}</td>
-                    <td class="num">{money(u.totalEur)} EUR</td>
-                  </tr>
-                )}
-              </For>
-            </tbody>
-          </table>
-        </section>
-      </Show>
     </AppShell>
   );
 }
